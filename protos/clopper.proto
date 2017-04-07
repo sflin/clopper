@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package hopperextension;
+
+// The greeting service definition.
+service Clopper {
+        // Greeting
+        rpc SayHello (HelloRequest) returns (Greeting) {}
+        
+        // Status Updates
+        rpc UpdateStatus (StatusRequest) returns (InstanceUpdate) {}
+        
+        // Execute hopper
+        rpc ExecuteHopper (HopRequest) returns (stream HopResults) {}
+}
+
+message HelloRequest {
+        string name=1;
+}
+
+message Greeting {
+        string greeting = 1;
+}
+
+message StatusRequest {
+        string request=1;
+}
+
+message InstanceUpdate {
+        string status = 1;
+}
+
+message HopRequest {
+        string trigger = 1;
+        string cl_params = 2;
+        
+}
+
+message HopResults {
+        string data=1;
+}
