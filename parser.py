@@ -8,14 +8,12 @@ Created on Wed Apr  5 11:17:22 2017
 
 
 import os
-import sys
 import re
 import xml.etree.ElementTree as ET
 
-def run():
+def parse(config):
     # get package: from config.xml jmh bench root dir and traverse down until find file .Benchmark
     # get config -->
-    config = sys.argv[1]
     root = ET.parse(config).getroot()
     rootdir = root.find('.//project/jmh_root').attrib['dir']
     # find <jmh-root-dir>
@@ -44,12 +42,11 @@ def run():
                         test_name = re.search(name_pat, line)    
                         test_list.append(test_name.group(1)) # store name in list 
                         
-            f.close()
     #for x in test_list:
      #   print x
     return test_list
 
 if __name__ == '__main__':
-  run()
+  parse('../config.xml')
 
            
