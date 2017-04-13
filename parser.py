@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 def parse(config):
     # get package: from config.xml jmh bench root dir and traverse down until find file .Benchmark
     # get config -->
+    # pass ip-config?
     root = ET.parse(config).getroot()
     rootdir = root.find('.//project/jmh_root').attrib['dir']
     # find <jmh-root-dir>

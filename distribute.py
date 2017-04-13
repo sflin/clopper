@@ -14,7 +14,7 @@ def distribute (target, total_inst):
     random.shuffle(target)
     x = len(target)/total_inst
     splitted_test_suite = []
-    # worst case: 4 elements, 5 instances
+    
     for i in range(total_inst-1):
         if x < 1:
             randoms = random.sample(range(len(target)), len(target))
@@ -22,5 +22,5 @@ def distribute (target, total_inst):
             splitted_test_suite.append(rand_list)
         else:
             splitted_test_suite.append(target[i*x:(i+1)*x])
-    splitted_test_suite.append(target[(total_inst-1)*x:]) # if odd number - assign the last elements
+    splitted_test_suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
     return splitted_test_suite

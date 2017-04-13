@@ -36,12 +36,15 @@ cd ..
 sudo pip install pygit2==0.25.0
 sudo pip install untangle
 
+# install grpcio-tools
+sudo python -m pip install grpcio
+sudo python -m pip install grpcio-tools
+
 # get hopper
 git clone https://github.com/sealuzh/hopper.git
-echo hello
 
 # get clopper
-#git clone https://github.com/
+# wget https://raw.githubusercontent.com/sflin/clopper/master/clopper_pb2.py?token=AOunWIehJcNN6rmF9Ekq3Lb10K18ixefks5Y8KFGwA%3D%3D -O clopper_pb2.py
 #start server aka cloud-manager
 # python server.py
 #(server sends "hello" from instances)
