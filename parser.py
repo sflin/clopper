@@ -11,12 +11,12 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
-def parse(config):
+def parse(project):
     # get package: from config.xml jmh bench root dir and traverse down until find file .Benchmark
     # get config -->
     # pass ip-config?
-    root = ET.parse(config).getroot()
-    rootdir = root.find('.//project/jmh_root').attrib['dir']
+    #root = ET.parse(config).getroot()
+    #rootdir = root.find('.//project/jmh_root').attrib['dir']
     # find <jmh-root-dir>
     # assign
     
@@ -25,7 +25,7 @@ def parse(config):
     annot_pat = re.compile('@Benchmark$')
     unit_pat = re.compile('public void (test.*)\(')
     name_pat = re.compile('public .* (.*)\(')
-    for subdir, dirs, files in os.walk(rootdir):
+    for subdir, dirs, files in os.walk(project):
         for file in files:
             #if re.search(file_pat, file):
              #   test_list.append(re.search(file_pat, file).group(1))
