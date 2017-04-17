@@ -19,12 +19,12 @@ def parse(project):
     #rootdir = root.find('.//project/jmh_root').attrib['dir']
     # find <jmh-root-dir>
     # assign
-    
+    # TODO: extend method for unit tests (@Test)
     test_list = []
-    #file_pat = re.compile('(.*Benchmark)\.java') # to distribute benchmark-files
     annot_pat = re.compile('@Benchmark$')
-    unit_pat = re.compile('public void (test.*)\(')
+    unit_pat = re.compile('@Test$')
     name_pat = re.compile('public .* (.*)\(')
+
     for subdir, dirs, files in os.walk(project):
         for file in files:
             #if re.search(file_pat, file):
@@ -32,22 +32,21 @@ def parse(project):
             # open files
             filepath = subdir + os.sep + file
             with open(filepath, 'r') as f:
-                for line in f: 
+                for line in f:
                     # loop over each line of file and look for @Benchmark or @Test or test.*()
                     if re.search(annot_pat, line):
-                        # get name                      
+                        # get name
                         line = f.next()
                         test_name = re.search(name_pat, line)
                         test_list.append(test_name.group(1))
-                    elif re.search(unit_pat, line):
-                        test_name = re.search(name_pat, line)    
-                        test_list.append(test_name.group(1)) # store name in list 
-                        
+            #elif re.search(unit_pat, line):
+             #   test_name = re.search(name_pat, line)    
+              #  test_list.append(test_name.group(1)) # store name in list
     #for x in test_list:
-     #   print x
+    #    print x
     return test_list
 
 if __name__ == '__main__':
-  parse('../config.xml')
+    parse('/home/selin/Documents/Uni/Bachelorthesis/tests')
 
            

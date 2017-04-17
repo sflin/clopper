@@ -14,11 +14,13 @@ import client
 import parser
 import os
 import shutil
+from Writer import Writer
 from impl.GitRepoHandler import GitRepoHandler
 import xml.etree.ElementTree as ET
 import distribute as dis
 from impl.MvnCommitWalker import MvnCommitWalker
 from impl.MvnVersionWalker import MvnVersionWalker
+from Distributor import Distributor
 
 def transfer_file(node, file):
     ip = node[1]
@@ -78,58 +80,17 @@ def run():
         node_dict = remote_hopper(driver)
     elif mode == 'ip':
         node_dict = data['ip-list']
-        
-    # create test-suite distribution -- doesn't work yet
-    if distri_mode == 'version':
-        cwd = os.getcwd()
-        repo = GitRepoHandler(data['project'])
-        versions = repo.find_commits_between('8924a5f1279a8cfdd845b6012832cfd2cfe32879','4c2ec165c1ae8394188475cc35e83bcc80931745', False)
-        #print versions
-        # get list of versions
-        """if data['CL-params']['-b'] and data['CL-params']['-b'] == 'versions': 
-            versions = MvnVersionWalker.generate_version_list()
-        else:
-            versions = MvnCommitWalker.generate_version_list()"""
-        test_bundles = dis.distribute(versions, data['total'])
-        #random.shuffle(test_bundles)?
-        # switch back to current dir
-        os.chdir(cwd)
-        
-    elif distri_mode == 'test':
-        # call parser to get list of tests
-        tests = parser.parse(config)
-        test_bundles = dis.distribute(tests, data['total'])
-        
-    # distribute test-suite among instances
-    for node, bundle in zip(node_dict.iteritems(), test_bundles):
+    distributor = Distributor(data, strategy=eval(data['distribution']))
+    test_suite = distributor.split()
+    writer = Writer(data, test_suite.content)
+    for node, bundle in zip(node_dict.iteritems(), test_suite):
+        config, cl = writer.generate_input(bundle) 
 
-        if distri_mode == 'version':
-            tree = ET.parse(config)
-            root = tree.getroot()
-            # adapt start and end tag in config for each instance
-            root.find('.//project').attrib['dir'] = '~/project' + data['project'].split('/')[-1] # adapt project-tag in config
-            root.find('.//project/jmh_root').attrib['dir'] = '~/project' + data['project'].split('/')[-1]
-            root.find('.//project/versions/start').text = bundle[0]
-            root.find('.//project/versions/end').text = bundle[-1]
-            tree.write('config.xml')
-        else:
-            for i in range(0,len(bundle)-1):
-                bundles += bundle[i] + ','
-            bundles += bundle[-1]
-            data['CL-params']['--tests'] = bundles
-            
-        config = 'config.xml' # for cl-params
-        data['CL-params']['-f'] = config
-        # generate file containing individual command line arguments
-        with open('./cl-params.txt', 'w') as cl_file:
-            for param in data['CL-params']:
-                cl_file.write(param + ' ' + data['CL-params'][param] + ' ')
-                
         transfer_file(node, config)
         # compress project-dir
         project = shutil.make_archive('project','gztar',root_dir= data['project']) # results in project.gz.tar, store project as /project/project-name
         transfer_file(node, project)
-        transfer_file(node, 'cl-params.txt')
+        transfer_file(node, 'cl-params.txt') #cl
         # start server
     for node in node_dict.iteritems():
         port = node[0][-1]
@@ -143,6 +104,7 @@ def run():
     status_mode = data['status-mode']# ALL, NEW, ERR
     instances = data['total']
     ending = client.run(instances, status_mode)
+    # shut down instances
     if ending == 'FINISHED':
         for node in node_dict.iteritems():
             # shut down servers and exit ssh

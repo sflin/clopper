@@ -38,6 +38,7 @@ def prepare_execution():
 def verification():
     for pid in psutil.pids():
         p = psutil.Process(pid)
+        # TODO: check filepath
         if p.name() == "python" and len(p.cmdline()) > 1 and "hopper.py" in p.cmdline()[1]:
             return True
     return False
@@ -97,13 +98,14 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             self.status = 'HOPPING'
             # start hopper
             self.cl_params = prepare_execution()
-            args = "python ../hopper/hopper.py " + self.cl_params #+ cl_params # check path
+            # TODO: check file path
+            args = "python ../hopper/hopper.py " + self.cl_params # check path
             subprocess.Popen(args, shell=True)
             return clopper_pb2.InstanceUpdate(status=self.status)
             
 
     def ExecuteHopper(self, request, context):
-        
+        # TODO: remove/rename method
         if request.trigger == 'my-input':
             # unpack project
             #self.cl_params = prepare_execution()
