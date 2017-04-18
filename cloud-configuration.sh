@@ -11,6 +11,7 @@ export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 sudo cat >> ~/.bashrc << EOF
 
 export PATH=$JAVA_HOME:$PATH
+export JAVA_HOME=$JAVA_HOME
 EOF
 source ~/.bashrc
 
@@ -40,11 +41,12 @@ sudo pip install untangle
 sudo python -m pip install grpcio
 sudo python -m pip install grpcio-tools
 
+cd ~
+mkdir output
+mkdir tmp
+
 # get hopper
 git clone https://github.com/sealuzh/hopper.git
 
 # get clopper
 # wget https://raw.githubusercontent.com/sflin/clopper/master/clopper_pb2.py?token=AOunWIehJcNN6rmF9Ekq3Lb10K18ixefks5Y8KFGwA%3D%3D -O clopper_pb2.py
-#start server aka cloud-manager
-# python server.py
-#(server sends "hello" from instances)

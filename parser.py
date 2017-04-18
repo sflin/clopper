@@ -47,6 +47,9 @@ def parse(project):
     return test_list
 
 if __name__ == '__main__':
-    parse('/home/selin/Documents/Uni/Bachelorthesis/tests')
+    t1 = parse('/home/selin/Documents/Uni/Bachelorthesis/project')
+    t2 = parse('/home/selin/Documents/Uni/Bachelorthesis/project/benchmarks')
+    print len(t1)
+    print len(t2)
 
            

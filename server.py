@@ -20,41 +20,41 @@ import clopper_pb2
 import clopper_pb2_grpc
 import psutil
 import fnmatch
+from os.path import expanduser
 
 _ONE_MIN_IN_SECONDS = 60
 def prepare_execution():
     """Unpack project and get CL parametres for hopper execution."""
     
-    #cmd = 'tar -xzf project.tar.gz -C ./project'
-    #subprocess.call(cmd, shell=True)
-    tar = tarfile.open('project.tar.gz')
-    tar.extractall(path='project')
+    tar = tarfile.open(expanduser('~/tmp/project.tar.gz')) # remove ~/tmp/project after execution!
+    tar.extractall(path=expanduser('~/tmp'))
     tar.close()
     # get CL-arguments for hopper execution
-    with open('cl-params.txt') as f: # check path
+    with open(expanduser('~/tmp/cl-params.txt')) as f:
         cl_params = f.read()
     return cl_params
 
 def verification():
     for pid in psutil.pids():
         p = psutil.Process(pid)
-        # TODO: check filepath
         if p.name() == "python" and len(p.cmdline()) > 1 and "hopper.py" in p.cmdline()[1]:
             return True
     return False
         
 def file_verification():
-    for file in os.listdir('.'): # check for file in current dir (home-dir)
+    for file in os.listdir(expanduser('~/output')):
+        print file
         if fnmatch.fnmatch(file, 'serveroutput.csv'):
             return True
     else:
         return False
         
 def check_hopper_status():
-    # HOPPING, STORING, ASLEEP
-    # check for pid existing (see stackoverflow); HOPPER is running
-    # if no pid, check if output written; STORING
-    # nothing, status ERROR
+    """ status: HOPPING, STORING, ASLEEP
+    check for pid existing; HOPPER is running
+    if no pid, check if output written; STORING
+    nothing, status ERROR"""
+    
     if verification():
         return 'HOPPING'
     elif file_verification(): # parse cl_params for -o path
@@ -62,20 +62,31 @@ def check_hopper_status():
     else:
         return 'ERROR'
     
+def get_status(status):
+    
+    return status
+    
 class Clopper(clopper_pb2_grpc.ClopperServicer):
         
     status = "SLEEPING"
     mode = 'NEW'
     instance_name = socket.gethostname()
-    cl_params = ''
 
     def SayHello(self, request, context):
         """Greet local host on start up."""
+        
         self.status = "RUNNING"
+        cmd = 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64; echo $JAVA_HOME'
+        subprocess.call(cmd, shell=True)
         return clopper_pb2.Greeting(greeting='Hello %s, this is %s' 
                                     % (request.name, self.instance_name))    
         
     def UpdateStatus(self, request, context):
+        # TODO: clean up method
+        """options = defaultdict(lambda: self.status, 
+                                  {'STATUS': (suite, None), 
+                                   'STORING': (None, suite)})
+        self.status = options[request.request]"""
         if request.request == 'STATUS':
             print self.status
             if self.status == 'RUNNING':
@@ -93,29 +104,19 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
                 else:
                     self.status = answer
                     return clopper_pb2.InstanceUpdate(status=self.status)
-        elif request.request == 'HOP':
-            print 'start for hopping now'
-            self.status = 'HOPPING'
-            # start hopper
-            self.cl_params = prepare_execution()
-            # TODO: check file path
-            args = "python ../hopper/hopper.py " + self.cl_params # check path
-            subprocess.Popen(args, shell=True)
-            return clopper_pb2.InstanceUpdate(status=self.status)
+
             
 
     def ExecuteHopper(self, request, context):
-        # TODO: remove/rename method
-        if request.trigger == 'my-input':
-            # unpack project
-            #self.cl_params = prepare_execution()
-            # trigger hopper execution
-            #args = "python ../../hopper.py " + cl_params # check path
-            #subprocess.call(args, shell=True)
-            self.status = "HOPPING"
-            #if self.mode == 'ALL' or 'NEW':
-                #print (self.UpdateStatus(request.trigger, context))
-            return clopper_pb2.HopResults(data='HOPPING')
+        # TODO: clean up method
+        if request.request == 'HOP':
+            print 'start for hopping now'
+            self.status = 'HOPPING'
+            # start hopper
+            cl_params = prepare_execution()
+            args = "python /home/selin/hopper/hopper.py " + cl_params # check path
+            subprocess.Popen(args, shell=True)
+            return clopper_pb2.HopResults(data='%s has hopper successfully started' % self.instance_name)
         else:
             return clopper_pb2.HopResults(data='ERR')
     
@@ -123,7 +124,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     clopper_pb2_grpc.add_ClopperServicer_to_server(Clopper(), server)
-    server.add_insecure_port('localhost:50051') # instances are bound to port 8080
+    server.add_insecure_port('localhost:8080') # instances are bound to port 8080
     server.start()
     try:
         while True:

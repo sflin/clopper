@@ -11,21 +11,17 @@ import time
 import sys
 import json
 import client
-import parser
 import os
 import shutil
 from Writer import Writer
-from impl.GitRepoHandler import GitRepoHandler
-import xml.etree.ElementTree as ET
-import distribute as dis
-from impl.MvnCommitWalker import MvnCommitWalker
-from impl.MvnVersionWalker import MvnVersionWalker
-from Distributor import Distributor
+from Distributor import Distributor, TestDistributor, VersionDistributor, VersionTestDistributor
 
 def transfer_file(node, file):
     ip = node[1]
-    cmd = "scp -i ~/.ssh/google_compute_engine " + file + " selin@" + ip + ":~" # probably only: "scp + + file + " selin@" + ip + ":~"
-    subprocess.call(cmd, shell=True) # blocking shell
+    # TODO: check if "scp " + file + " selin@" + ip + ":~/tmp" was enough
+    cmd = "scp -i ~/.ssh/google_compute_engine " + file + " selin@" + ip + ":~/tmp"
+    print cmd
+    #subprocess.call(cmd, shell=True) # blocking shell
 
 def create_GCE_driver(data):
     """Create GCE driver. Adaptable to other cloud-providers."""
@@ -63,16 +59,14 @@ def run():
     
     mode = data['mode']
     distri_mode = data['distribution']
-    config = data['CL-params']['-f'] 
-    test_bundles = []
-    bundles = ''
     
-    # check parameters
+    # TODO: check for valid parameters
+    """
     if mode == 'libcloud' or 'ip' and distri_mode == 'version' or 'test':
         pass
     else:
         print 'Invalid mode. Enter libcloud or ip for mode, and version or test for distribution.'
-        exit()
+        exit()"""
     
     # get list of running instances, format: {instance-i : ip}
     if mode == 'libcloud':
@@ -80,24 +74,29 @@ def run():
         node_dict = remote_hopper(driver)
     elif mode == 'ip':
         node_dict = data['ip-list']
+        
+    # create test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
     test_suite = distributor.split()
     writer = Writer(data, test_suite.content)
+    
+    #distribute test suite among instances
     for node, bundle in zip(node_dict.iteritems(), test_suite):
         config, cl = writer.generate_input(bundle) 
 
-        transfer_file(node, config)
+        transfer_file(node, config) # cloud-config.xml
+        transfer_file(node, cl) # cl-params.txt
         # compress project-dir
-        project = shutil.make_archive('project','gztar',root_dir= data['project']) # results in project.gz.tar, store project as /project/project-name
+        project = shutil.make_archive('project','gztar',root_dir= data['project']) # results in project.gz.tar, store project as /project/"name"
         transfer_file(node, project)
-        transfer_file(node, 'cl-params.txt') #cl
+        
         # start server
     for node in node_dict.iteritems():
         port = node[0][-1]
         ip = node[1]
-        cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ./server.py' # keys needed? cloud-manager
-        #print cmd
-        subprocess.Popen(cmd, shell=True) # non-blocking shell
+        cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' source ~/.bashrc; python ./server.py' # keys needed? cloud-manager ~/clopper/server.py
+        print cmd
+        #subprocess.Popen(cmd, shell=True) # non-blocking shell
         
     # wait for instances to start server
     time.sleep(3)

@@ -11,6 +11,7 @@ import json
 import parser
 import os
 from impl.GitRepoHandler import GitRepoHandler
+import xml.etree.ElementTree as ET
 from TestSuite import TestSuite
 
 class Distributor(object):
@@ -18,8 +19,6 @@ class Distributor(object):
     def __init__(self, data, strategy=None):
         self.action = None
         self.data = data
-        self.total = data['total']
-        self.project = '/home/selin/Documents/Uni/Bachelorthesis/protostuff'
         if strategy:
             self.action = strategy()
             
@@ -32,18 +31,23 @@ class Distributor(object):
             
 class VersionDistributor(object):
     
-    def get_target(self, project):
-        # TODO: fix method
+    def get_target(self, data):
+        
         cwd = os.getcwd()
-        repo = GitRepoHandler(project)
-        target = repo.find_commits_between('8924a5f1279a8cfdd845b6012832cfd2cfe32879','4c2ec165c1ae8394188475cc35e83bcc80931745', False)
+        tree = ET.parse(data['CL-params']['-f'])
+        root = tree.getroot()
+        project = root.find('.//project').attrib['dir']
+        start = root.find('.//project/versions/start').text
+        end = root.find('.//project/versions/end').text
+        repo = GitRepoHandler(project) # this must be a git project!
+        target = repo.find_commits_between(start, end, False)
         os.chdir(cwd)
         return target
     
     def split(self, instance):
-        target = self.get_target(instance.project) #instance.data['project']) # this must be a git-project
         
-        total_inst = instance.total
+        target = self.get_target(instance.data)
+        total_inst = instance.data['total']
         x = len(target)/total_inst
         suite = TestSuite(content = 'version')
         for i in range(total_inst-1):
@@ -51,46 +55,36 @@ class VersionDistributor(object):
                 randoms = random.sample(range(len(target)), len(target))
                 rand_list = [target[i] for i in randoms]
                 suite.append(rand_list)
-                #splitted_test_suite.append(rand_list)
             else:
                 suite.append(target[i*x:(i+1)*x])
-                #splitted_test_suite.append(target[i*x:(i+1)*x])
-        suite.append(target[(total_inst-1)*x:])
-        #splitted_test_suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
+        suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
         suite.randomize()
-        #random.shuffle(splitted_test_suite)
         return suite
-        #return splitted_test_suite
     
 class TestDistributor(object):
     
     def get_target(self, project):
         
-        target = parser.parse(project) # project or jmh-dir?
+        target = parser.parse(project)
         return target
     
     def split(self, instance):
         
-        target = self.get_target(instance.data['project']) # this must be a jmh-project
+        target = self.get_target(instance.data['project']+'/benchmarks') # this must be the jmh root dir
         random.shuffle(target)
-        total_inst = instance.total
+        total_inst = instance.data['total']
         x = len(target)/total_inst
         suite = TestSuite(content='test')
-        #splitted_test_suite = []
         
         for i in range(total_inst-1):
             if x < 1:
                 randoms = random.sample(range(len(target)), len(target))
                 rand_list = [target[i] for i in randoms]
                 suite.append(rand_list)
-                #splitted_test_suite.append(rand_list)
             else:
                 suite.append(target[i*x:(i+1)*x])
-                #splitted_test_suite.append(target[i*x:(i+1)*x])
         suite.append(target[(total_inst-1)*x:])
         return suite
-        #splitted_test_suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
-        #return splitted_test_suite
 
 class VersionTestDistributor(object):
     
@@ -101,11 +95,7 @@ class VersionTestDistributor(object):
         tester = Distributor(instance.data, strategy = TestDistributor)
         tests = tester.split()
         suite = TestSuite(content='versiontest')
-        suite = suite.nest(versions, tests, instance.total)
-
-        #tmp = [(v,t) for v,t in zip(versions,tests)]
-        #suite.extend(tmp)
-        #print type(suite)
+        suite = suite.nest(versions, tests, instance.data['total'])
         return suite
 
 """class RandomDistributor(object):
@@ -126,8 +116,9 @@ if __name__ == "__main__" :
                             "-t": "benchmark",
                             "-b": "versions"
                           },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/tests",
-                          "distribution": "VersionTestDistributor",
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/clopper/config.xml",
+                          "distribution": "TestDistributor",
                           "status-mode": "ALL"
                         }""")
     distributor = Distributor(data, strategy=eval(data['distribution']))
