@@ -18,8 +18,8 @@ from Distributor import Distributor, TestDistributor, VersionDistributor, Versio
 
 def transfer_file(node, file):
     ip = node[1]
-    # TODO: check if "scp " + file + " selin@" + ip + ":~/tmp" was enough
-    cmd = "scp -i ~/.ssh/google_compute_engine " + file + " selin@" + ip + ":~/tmp"
+    # TODO: check if "scp " + file + " selin@" + ip + ":~/tmp" is enough
+    cmd = "scp -i ~/.ssh/google_compute_engine " + str(file) + " selin@" + ip + ":~/tmp"
     print cmd
     #subprocess.call(cmd, shell=True) # blocking shell
 
@@ -94,9 +94,10 @@ def run():
     for node in node_dict.iteritems():
         port = node[0][-1]
         ip = node[1]
-        cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' source ~/.bashrc; python ./server.py' # keys needed? cloud-manager ~/clopper/server.py
+        cmd = "python ./server" + str(port) + ".py"
+        #cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ./server.py' # keys needed? cloud-manager ~/clopper/server.py
         print cmd
-        #subprocess.Popen(cmd, shell=True) # non-blocking shell
+        subprocess.Popen(cmd, shell=True) # non-blocking shell
         
     # wait for instances to start server
     time.sleep(3)
@@ -107,7 +108,8 @@ def run():
     if ending == 'FINISHED':
         for node in node_dict.iteritems():
             # shut down servers and exit ssh
-            cmd = "ssh selin@" + node[1] + " signal.SIGINT && exit"
+            #cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
+            cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
             subprocess.call(cmd, shell=True)
             if mode == 'libcloud':
                 driver.ex_stop_node(node)

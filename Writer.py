@@ -19,7 +19,6 @@ class Writer(object):
         
     def eval_input(self, suite):
         
-        print self.content
         options = defaultdict(lambda: (None, None), 
                               {'version': (suite, None), 
                                'test': (None, suite), 
@@ -29,21 +28,16 @@ class Writer(object):
     def get_parameters(self, suite):
         
         cl_params = self.data['CL-params']
-        if suite:
-            tmp = ''
-            for i in range(0, len(suite)-1): # collect tests
-                tmp += suite[i] + ','
-            tmp += suite[-1]
-            cl_params['--tests'] = tmp
-            # add --tests for TestDistributor    
-        cl_params['-f'] = '/home/selin/tmp/cloud-config.xml' # overwrite local config-specification
-        # generate file containing individual command line arguments
         with open('cl-params.txt', 'w') as cl_file:
+            # TODO: adapt config-file path
             for param in cl_params:
                 cl_file.write(param + ' ' + cl_params[param] + ' ')
-        # TODO: fix this, why is cl_params global?
-        if suite:
-            del cl_params['--tests']
+            if suite[0]: # if suite has elements, add --tests flag
+                tmp='--tests '
+                for i in range(0, len(suite)-1): 
+                    tmp += suite[i] + ','
+                tmp += suite[-1]
+                cl_file.write(tmp)
         return cl_file
     
     def get_config(self, suite):
@@ -53,12 +47,21 @@ class Writer(object):
         # adapt start and end tag in config for each instance
         root.find('.//project').attrib['dir'] = '/home/selin/tmp/project/' + root.find('.//project').attrib['dir'].split('/')[-1]
         root.find('.//project/jmh_root').attrib['dir'] = '/home/selin/tmp/project/benchmarks'
-        if suite:
+        if suite[0]: # if suite has elements 
             root.find('.//project/versions/start').text = suite[0] # only do this if VersionDistributor or TestVersionDistributor
             root.find('.//project/versions/end').text = suite[-1]
         config = 'cloud-config.xml'
         tree.write(config, encoding='utf-8', xml_declaration=True)
         return config
+    
+    def get_multi_configs(self, suite):
+        
+        if suite[-1]=='random':
+            configs = []
+            for s in suite:
+                configs.append(self.get_config(s))
+            return configs
+                
     
     def generate_input(self, test_suite):
         

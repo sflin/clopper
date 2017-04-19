@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='clopper.proto',
   package='hopperextension',
   syntax='proto3',
-  serialized_pb=_b('\n\rclopper.proto\x12\x0fhopperextension\"\x1c\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x08Greeting\x12\x10\n\x08greeting\x18\x01 \x01(\t\" \n\rStatusRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\" \n\x0eInstanceUpdate\x12\x0e\n\x06status\x18\x01 \x01(\t\"\x1d\n\nHopRequest\x12\x0f\n\x07trigger\x18\x01 \x01(\t\"\x1a\n\nHopResults\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2\xf1\x01\n\x07\x43lopper\x12\x46\n\x08SayHello\x12\x1d.hopperextension.HelloRequest\x1a\x19.hopperextension.Greeting\"\x00\x12Q\n\x0cUpdateStatus\x12\x1e.hopperextension.StatusRequest\x1a\x1f.hopperextension.InstanceUpdate\"\x00\x12K\n\rExecuteHopper\x12\x1b.hopperextension.HopRequest\x1a\x1b.hopperextension.HopResults\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rclopper.proto\x12\x0fhopperextension\"\x1f\n\x0cHelloRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\"\x1c\n\x08Greeting\x12\x10\n\x08greeting\x18\x01 \x01(\t\" \n\rStatusRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\".\n\x0eInstanceUpdate\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"\x1d\n\nHopRequest\x12\x0f\n\x07trigger\x18\x01 \x01(\t\"8\n\nHopResults\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\xf1\x01\n\x07\x43lopper\x12\x46\n\x08SayHello\x12\x1d.hopperextension.HelloRequest\x1a\x19.hopperextension.Greeting\"\x00\x12Q\n\x0cUpdateStatus\x12\x1e.hopperextension.StatusRequest\x1a\x1f.hopperextension.InstanceUpdate\"\x00\x12K\n\rExecuteHopper\x12\x1b.hopperextension.HopRequest\x1a\x1b.hopperextension.HopResults\"\x00\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -34,7 +34,7 @@ _HELLOREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='hopperextension.HelloRequest.name', index=0,
+      name='request', full_name='hopperextension.HelloRequest.request', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -53,7 +53,7 @@ _HELLOREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=34,
-  serialized_end=62,
+  serialized_end=65,
 )
 
 
@@ -83,8 +83,8 @@ _GREETING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=64,
-  serialized_end=92,
+  serialized_start=67,
+  serialized_end=95,
 )
 
 
@@ -114,8 +114,8 @@ _STATUSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=94,
-  serialized_end=126,
+  serialized_start=97,
+  serialized_end=129,
 )
 
 
@@ -133,6 +133,13 @@ _INSTANCEUPDATE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='hopperextension.InstanceUpdate.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -145,8 +152,8 @@ _INSTANCEUPDATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=128,
-  serialized_end=160,
+  serialized_start=131,
+  serialized_end=177,
 )
 
 
@@ -176,8 +183,8 @@ _HOPREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=162,
-  serialized_end=191,
+  serialized_start=179,
+  serialized_end=208,
 )
 
 
@@ -189,8 +196,22 @@ _HOPRESULTS = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='data', full_name='hopperextension.HopResults.data', index=0,
+      name='status', full_name='hopperextension.HopResults.status', index=0,
       number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='hopperextension.HopResults.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='hopperextension.HopResults.data', index=2,
+      number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -207,8 +228,8 @@ _HOPRESULTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=193,
-  serialized_end=219,
+  serialized_start=210,
+  serialized_end=266,
 )
 
 DESCRIPTOR.message_types_by_name['HelloRequest'] = _HELLOREQUEST

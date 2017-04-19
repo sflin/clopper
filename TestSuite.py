@@ -20,6 +20,7 @@ class TestSuite(list):
     
     def nest(self, seq1, seq2, length):
         for i in xrange(length):
+            #TODO: remove this line
             tmp = TestSuite(content='versiontest')
             tmp.append(seq1[i])
             tmp.append(seq2[i])

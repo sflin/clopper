@@ -23,18 +23,24 @@ class Distributor(object):
             self.action = strategy()
             
     def split(self):
+        pass
+            
+    def get_suite(self):
+        
         if(self.action):
-            return self.action.split(self)
-        else: 
+            return self.action.get_suite(self)
+        else:
+            #suite = [(None, None) for in range(self.data['total'])]
+            #return suite
             raise UnboundLocalError('Exception raised, no such strategyClass!')
              
             
 class VersionDistributor(object):
-    
+    """Version range, all tests"""
     def get_target(self, data):
         
         cwd = os.getcwd()
-        tree = ET.parse(data['CL-params']['-f'])
+        tree = ET.parse(data['config'])
         root = tree.getroot()
         project = root.find('.//project').attrib['dir']
         start = root.find('.//project/versions/start').text
@@ -61,8 +67,16 @@ class VersionDistributor(object):
         suite.randomize()
         return suite
     
+    def get_suite(self, instance):
+        
+        suite = TestSuite()
+        total_inst = instance.data['total']
+        suite = self.split()
+        suite = suite.nest(suite, total_inst*[None], total_inst)
+        return suite
+        
 class TestDistributor(object):
-    
+    """All versions, random tests"""
     def get_target(self, project):
         
         target = parser.parse(project)
@@ -85,8 +99,16 @@ class TestDistributor(object):
                 suite.append(target[i*x:(i+1)*x])
         suite.append(target[(total_inst-1)*x:])
         return suite
+    
+    def get_suite(self, instance):
+        suite = TestSuite()
+        total_inst = instance.data['total']
+        suite = self.split()
+        suite = suite.nest(total_inst*[None], suite, total_inst)
+        return suite
 
 class VersionTestDistributor(object):
+    """Version ranges, random tests"""
     
     def split(self, instance):
         
@@ -94,14 +116,89 @@ class VersionTestDistributor(object):
         versions = versioner.split()
         tester = Distributor(instance.data, strategy = TestDistributor)
         tests = tester.split()
+        return versions, tests    
+    
+    def get_suite(self, instance):
+        
         suite = TestSuite(content='versiontest')
+        versions, tests = self.split()
         suite = suite.nest(versions, tests, instance.data['total'])
         return suite
-
-"""class RandomDistributor(object):
+        
+class RandomVersionDistributor(object):
+    """Random versions, all tests."""
+    
+    def get_target(self, data):
+        
+        cwd = os.getcwd()
+        tree = ET.parse(data['config'])
+        root = tree.getroot()
+        project = root.find('.//project').attrib['dir']
+        start = root.find('.//project/versions/start').text
+        end = root.find('.//project/versions/end').text
+        repo = GitRepoHandler(project) # this must be a git project!
+        target = repo.find_commits_between(start, end, False)
+        os.chdir(cwd)
+        return target
     
     def split(self, instance):
-        distributor = Distributor()"""
+        
+        target = self.get_target(instance.data)
+        random.shuffle(target)
+        total_inst = instance.data['total']
+        x = len(target)/total_inst
+        suite = TestSuite(content='test')
+        
+        for i in range(total_inst-1):
+            if x < 1:
+                randoms = random.sample(range(len(target)), len(target))
+                rand_list = [target[i] for i in randoms]
+                suite.append(rand_list)
+            else:
+                suite.append(target[i*x:(i+1)*x])
+        suite.append(target[(total_inst-1)*x:])
+        return suite
+    
+    def get_suite(self, instance):
+        suite = TestSuite()
+        total_inst = instance.data['total']
+        suite = self.split()
+        suite = suite.nest(suite, total_inst*[None], total_inst)
+        return suite        
+    
+class RandomDistributor(object):
+    """Random versions, random tests."""
+    
+    def split(self, instance):
+        
+        versioner = Distributor(instance.data, strategy = RandomVersionDistributor)
+        versions = versioner.split()
+        tester = Distributor(instance.data, strategy = TestDistributor)
+        tests = tester.split()
+        return versions, tests    
+    
+    def get_suite(self, instance):
+        
+        suite = TestSuite(content='versiontest')
+        versions, tests = self.split()
+        suite = suite.nest(versions, tests, instance.data['total'])
+        return suite
+    
+class DefaultDistributor(object):
+    """Versions specified in config, all tests"""
+    
+    def split(self, instance):
+        
+        total = instance.data['total']
+        suite = TestSuite(content='default')
+        suite = suite.nest(total*[None], total*[None], total)
+        return suite
+
+    def get_suite(self, instance):
+        total = instance.data['total']
+        suite = TestSuite(content='default')
+        suite = suite.nest(total*[None], total*[None], total)
+        return suite        
     
 if __name__ == "__main__" :
     data = json.loads("""{
@@ -122,7 +219,7 @@ if __name__ == "__main__" :
                           "status-mode": "ALL"
                         }""")
     distributor = Distributor(data, strategy=eval(data['distribution']))
-    test_data = distributor.split()
+    test_data = distributor.get_suite()
     for item in test_data:
         print item
     

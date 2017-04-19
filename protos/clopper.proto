@@ -11,11 +11,11 @@ service Clopper {
         rpc UpdateStatus (StatusRequest) returns (InstanceUpdate) {}
         
         // Execute hopper
-        rpc ExecuteHopper (HopRequest) returns (stream HopResults) {}
+        rpc ExecuteHopper (HopRequest) returns (HopResults) {}
 }
 
 message HelloRequest {
-        string name=1;
+        string request=1;
 }
 
 message Greeting {
@@ -28,14 +28,16 @@ message StatusRequest {
 
 message InstanceUpdate {
         string status = 1;
+	string name=2;
 }
 
 message HopRequest {
         string trigger = 1;
-        string cl_params = 2;
         
 }
 
 message HopResults {
-        string data=1;
+	string status = 1;
+	string name=2;
+        string data=3;
 }
