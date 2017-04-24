@@ -77,7 +77,7 @@ def run():
         
     # create test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
-    test_suite = distributor.split()
+    test_suite = distributor.get_suite()
     writer = Writer(data, test_suite.content)
     
     #distribute test suite among instances
@@ -106,16 +106,20 @@ def run():
     ending = client.run(instances, status_mode)
     # shut down instances
     if ending == 'FINISHED':
+        # TODO: grab results
         for node in node_dict.iteritems():
-            # shut down servers and exit ssh
+            # shut down servers on instances
             #cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
+            # close ssh connection
             cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
             subprocess.call(cmd, shell=True)
+            # stop GCE instances
             if mode == 'libcloud':
                 driver.ex_stop_node(node)
-            
-            
-    # disconnect and destroy nodes
+        # clean up tar-dirs
+        shutil.rmtree('./config.tar.gz')
+        shutil.rmtree('./params.tar.gz')
+        shutil.rmtree('./project.tar.gz')
 
 if __name__ == '__main__':
   run()

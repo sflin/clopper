@@ -21,8 +21,10 @@ import clopper_pb2_grpc
 import psutil
 import fnmatch
 from os.path import expanduser
+import shutil
 
 _ONE_MIN_IN_SECONDS = 60
+_EXECUTIONS = 0
 def prepare_execution():
     """Unpack project and get CL parametres for hopper execution."""
     
@@ -31,8 +33,32 @@ def prepare_execution():
         tar.extractall(path=expanduser('~/tmp'))
         tar.close()
     except IOError:
-        print "Condition already satisfied."
+        print "Project found."
+        shutil.rmtree(expanduser('~/tmp/project'))
+        tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp'))
         pass
+    try:
+        tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp'))
+        tar.close()
+    except IOError:
+        print "Condition already satisfied."
+        shutil.rmtree(expanduser('~/tmp/config'))
+        tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp'))
+        pass
+    try:
+        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp'))
+        tar.close()
+    except IOError:
+        print "Condition already satisfied."
+        shutil.rmtree(expanduser('~/tmp/params'))
+        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp'))
+        pass
+
     # get CL-arguments for hopper execution
     with open(expanduser('~/tmp/cl-params.txt')) as f:
         cl_params = f.read()
@@ -53,9 +79,32 @@ def file_verification():
     else:
         return False
     
+def get_work():
+    
+    num_files = len(os.listdir(expanduser('~/tmp/params')))
+    global _EXECUTIONS
+    if _EXECUTIONS < num_files:
+        _EXECUTIONS += 1
+        with open(expanduser('~/tmp/params/cl-params-'+ str(_EXECUTIONS) +'.txt')) as f:
+            cl_params = f.read()
+        return cl_params
+    else:
+        return None
+    
 def do_more_work():
-    return False
+    
+    cl_params = get_work()
+    if cl_params:
+        args = "python /home/selin/hopper/hopper.py " + cl_params # check path
+        print args
+        my_env = os.environ.copy()
+        my_env["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
+        #subprocess.Popen(args, shell=True, env=my_env)
+        return True
+    else:
+        return False
         
+    
 def check_hopper_status():
     """ status: HOPPING, STORING, ASLEEP
     check for pid existing; HOPPER is running
@@ -115,7 +164,8 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             print 'start for hopping now'
             self.status = 'HOPPING'
             # start hopper
-            cl_params = prepare_execution()
+            prepare_execution()
+            cl_params = get_work()
             args = "python /home/selin/hopper/hopper.py " + cl_params # check path
             print args
             my_env = os.environ.copy()

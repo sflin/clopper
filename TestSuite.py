@@ -9,7 +9,7 @@ import random
 
 class TestSuite(list):
     
-    def __init__(self, content, *args, **kwargs):
+    def __init__(self, content=None, *args, **kwargs):
         list.__init__(self)
         self.content = content
         
@@ -19,9 +19,10 @@ class TestSuite(list):
         return self
     
     def nest(self, seq1, seq2, length):
+        
         for i in xrange(length):
             #TODO: remove this line
-            tmp = TestSuite(content='versiontest')
+            tmp = TestSuite()
             tmp.append(seq1[i])
             tmp.append(seq2[i])
             self.append(tmp)
