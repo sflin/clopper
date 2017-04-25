@@ -12,16 +12,19 @@ import sys
 import json
 import client
 import os
+from os.path import expanduser
 import shutil
 from Writer import Writer
-from Distributor import Distributor, TestDistributor, VersionDistributor, VersionTestDistributor
+from Distributor import (Distributor, TestDistributor, VersionDistributor, 
+                         VersionTestDistributor, RandomDistributor, 
+                         DefaultDistributor, RandomVersionDistributor)
 
 def transfer_file(node, file):
     ip = node[1]
     # TODO: check if "scp " + file + " selin@" + ip + ":~/tmp" is enough
     cmd = "scp -i ~/.ssh/google_compute_engine " + str(file) + " selin@" + ip + ":~/tmp"
     print cmd
-    #subprocess.call(cmd, shell=True) # blocking shell
+    subprocess.call(cmd, shell=True) # blocking shell
 
 def create_GCE_driver(data):
     """Create GCE driver. Adaptable to other cloud-providers."""
@@ -56,7 +59,7 @@ def run():
     # parse json
     with open(sys.argv[1]) as data_file:
         data = json.load(data_file)
-    
+    #os.mkdir(expanduser('~/tmp'))
     mode = data['mode']
     distri_mode = data['distribution']
     
@@ -83,7 +86,10 @@ def run():
     #distribute test suite among instances
     for node, bundle in zip(node_dict.iteritems(), test_suite):
         config, cl = writer.generate_input(bundle) 
-
+        cmd = "ssh selin@" + node[1] + " mkdir ~/tmp"
+        subprocess.call(cmd, shell=True)
+        cmd = "ssh selin@" + node[1] + " mkdir ~/output"
+        subprocess.call(cmd, shell=True)
         transfer_file(node, config) # cloud-config.xml
         transfer_file(node, cl) # cl-params.txt
         # compress project-dir
@@ -95,31 +101,33 @@ def run():
         port = node[0][-1]
         ip = node[1]
         cmd = "python ./server" + str(port) + ".py"
-        #cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ./server.py' # keys needed? cloud-manager ~/clopper/server.py
+        cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ~/server.py' # keys needed? cloud-manager ~/clopper/server.py
         print cmd
         subprocess.Popen(cmd, shell=True) # non-blocking shell
         
     # wait for instances to start server
-    time.sleep(3)
+    time.sleep(5)
     status_mode = data['status-mode']# ALL, NEW, ERR
     instances = data['total']
+    print instances
     ending = client.run(instances, status_mode)
     # shut down instances
     if ending == 'FINISHED':
         # TODO: grab results
         for node in node_dict.iteritems():
             # shut down servers on instances
-            #cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
+            cmd = "ssh selin@" + node[1] + " rm -rf ~/tmp"
+            subprocess.call(cmd, shell=True)
+            #cmd = "ssh selin@" + node[1] + " rm -rf ~/output"
+            #subprocess.call(cmd, shell=True)
+            cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
             # close ssh connection
-            cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
+            #cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
             subprocess.call(cmd, shell=True)
             # stop GCE instances
             if mode == 'libcloud':
                 driver.ex_stop_node(node)
         # clean up tar-dirs
-        shutil.rmtree('./config.tar.gz')
-        shutil.rmtree('./params.tar.gz')
-        shutil.rmtree('./project.tar.gz')
-
+        #shutil.rmtree(expanduser('~/tmp'))
 if __name__ == '__main__':
   run()

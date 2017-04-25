@@ -35,7 +35,9 @@ def initial_greeting(stubs):
 
 def create_stubs(instances):
     
-    channels = [grpc.insecure_channel('localhost:5005'+str(i)) for i in range(1, instances + 1)] # listen to port 2221 to 222x
+    channels = [grpc.insecure_channel('localhost:222'+str(i)) for i in range(1, instances + 1)] # listen to port 2221 to 222x
+    for c in channels:
+        print(c)
     stubs = [clopper_pb2_grpc.ClopperStub(c) for c in channels]
     return stubs
 
@@ -49,12 +51,12 @@ def run(instances, mode='ALL'):
     # start status-concept?
     print("Requesting for status now...")
     running = status_request(stubs)
-    time.sleep(3)
+    time.sleep(10)
     print("Requesting for data of hopper now...")
     data = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
     running = status_request(stubs)
     while running:
-        time.sleep(3)
+        time.sleep(7)
         running = status_request(stubs)
     return 'FINISHED'
     

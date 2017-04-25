@@ -30,39 +30,32 @@ def prepare_execution():
     
     try:
         tar = tarfile.open(expanduser('~/tmp/project.tar.gz')) # remove ~/tmp/project after execution!
-        tar.extractall(path=expanduser('~/tmp'))
+        tar.extractall(path=expanduser('~/tmp/project'))
         tar.close()
     except IOError:
         print "Project found."
         shutil.rmtree(expanduser('~/tmp/project'))
         tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp'))
-        pass
+        tar.extractall(path=expanduser('~/tmp/project'))
     try:
         tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp'))
+        tar.extractall(path=expanduser('~/tmp/config'))
         tar.close()
     except IOError:
         print "Condition already satisfied."
         shutil.rmtree(expanduser('~/tmp/config'))
         tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp'))
-        pass
+        tar.extractall(path=expanduser('~/tmp/config'))
     try:
         tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp'))
+        tar.extractall(path=expanduser('~/tmp/params'))
         tar.close()
     except IOError:
         print "Condition already satisfied."
         shutil.rmtree(expanduser('~/tmp/params'))
         tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp'))
-        pass
-
-    # get CL-arguments for hopper execution
-    with open(expanduser('~/tmp/cl-params.txt')) as f:
-        cl_params = f.read()
-    return cl_params
+        tar.extractall(path=expanduser('~/tmp/params'))
+    return
 
 def verification():
     for pid in psutil.pids():
@@ -71,17 +64,24 @@ def verification():
             return True
     return False
         
-def file_verification():
-    for file in os.listdir(expanduser('~/output')):
-        print file
-        if fnmatch.fnmatch(file, 'serveroutput.csv'):
-            return True
+def has_finished():
+    try:
+        num_files = len(os.listdir(expanduser('~/output')))
+    except OSError:
+        print "No such directory."
+        return False
+    global _EXECUTIONS
+    if num_files == _EXECUTIONS:
+        return True
     else:
         return False
     
 def get_work():
     
-    num_files = len(os.listdir(expanduser('~/tmp/params')))
+    try:
+        num_files = len(os.listdir(expanduser('~/tmp/params')))
+    except OSError:
+        return None
     global _EXECUTIONS
     if _EXECUTIONS < num_files:
         _EXECUTIONS += 1
@@ -95,11 +95,13 @@ def do_more_work():
     
     cl_params = get_work()
     if cl_params:
-        args = "python /home/selin/hopper/hopper.py " + cl_params # check path
+        args = "python ~/hopper/hopper.py " + cl_params # check path
+        #args = "python ~/Documents/Uni/Bachelorthesis/hopper/hopper.py " + cl_params
         print args
         my_env = os.environ.copy()
         my_env["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
-        #subprocess.Popen(args, shell=True, env=my_env)
+        with open(os.devnull, 'w') as fp:
+            subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
         return True
     else:
         return False
@@ -115,7 +117,7 @@ def check_hopper_status():
         return 'HOPPING'
     elif do_more_work():
         return 'HOPPING'
-    elif file_verification(): # parse cl_params for -o path
+    elif has_finished(): # parse cl_params for -o path
         return 'STORING'
     else:
         return 'ERROR'
@@ -166,11 +168,13 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             # start hopper
             prepare_execution()
             cl_params = get_work()
-            args = "python /home/selin/hopper/hopper.py " + cl_params # check path
+            args = "python ~/hopper/hopper.py " + cl_params # check path
+            #args = "python ~/Documents/Uni/Bachelorthesis/hopper/hopper.py " + cl_params
             print args
             my_env = os.environ.copy()
             my_env["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
-            #subprocess.Popen(args, shell=True, env=my_env)
+            with open(os.devnull, 'w') as fp: # TODO: suppressing log, doesn't work 
+                subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
             return clopper_pb2.HopResults(status=self.status, name=self.instance_name)
         else:
             return clopper_pb2.HopResults(status='ERROR', name=self.instance_name)
@@ -179,7 +183,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     clopper_pb2_grpc.add_ClopperServicer_to_server(Clopper(), server)
-    server.add_insecure_port('localhost:50051') # instances are bound to port 8080
+    server.add_insecure_port('localhost:8080') # instances are bound to port 8080
     server.start()
     try:
         while True:
