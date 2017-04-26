@@ -85,11 +85,10 @@ def get_work():
     global _EXECUTIONS
     if _EXECUTIONS < num_files:
         _EXECUTIONS += 1
-        with open(expanduser('~/tmp/params/cl-params-'+ str(_EXECUTIONS) +'.txt')) as f:
+        with open(expanduser("~/tmp/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
             cl_params = f.read()
         return cl_params
-    else:
-        return None
+    return None
     
 def do_more_work():
     
@@ -99,7 +98,7 @@ def do_more_work():
         #args = "python ~/Documents/Uni/Bachelorthesis/hopper/hopper.py " + cl_params
         print args
         my_env = os.environ.copy()
-        my_env["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
+        my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
         with open(os.devnull, 'w') as fp:
             subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
         return True
@@ -121,40 +120,33 @@ def check_hopper_status():
         return 'STORING'
     else:
         return 'ERROR'
-    
-def get_status(status):
-    
-    return status
-    
+     
 class Clopper(clopper_pb2_grpc.ClopperServicer):
         
-    status = "SLEEPING"
+    status = 'SLEEPING'
     mode = 'NEW'
     instance_name = socket.gethostname()
 
     def SayHello(self, request, context):
         """Greet local host on start up."""
         
-        self.status = "RUNNING"
-        return clopper_pb2.Greeting(greeting='Hello, this is %s' 
+        self.status = 'RUNNING'
+        return clopper_pb2.Greeting(greeting = "Hello from %s" 
                                     % self.instance_name)
         
     def UpdateStatus(self, request, context):
         # TODO: clean up method
         #    print self.status
-        if self.status == 'RUNNING':
-            print 'is running or sleeping'
-            return clopper_pb2.InstanceUpdate(status=self.status, name=self.instance_name)
-        elif self.status == 'FINISHED':
-            print 'has finished'
+    
+        if self.status in ('RUNNING', 'FINISHED'):
             return clopper_pb2.InstanceUpdate(status=self.status, name=self.instance_name)
         else:
             answer = check_hopper_status()
             if answer == 'STORING':
-                print 'is storing'
+                print "is storing"
                 self.status = 'FINISHED'
                 return clopper_pb2.InstanceUpdate(status='STORING', name=self.instance_name)
-            else:
+            else: #default option
                 self.status = answer
                 return clopper_pb2.InstanceUpdate(status=self.status, name=self.instance_name)
 
@@ -163,7 +155,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
     def ExecuteHopper(self, request, context):
         # TODO: clean up method
         if request.trigger == 'HOP':
-            print 'start for hopping now'
+            print "start for hopping now"
             self.status = 'HOPPING'
             # start hopper
             prepare_execution()
@@ -172,7 +164,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             #args = "python ~/Documents/Uni/Bachelorthesis/hopper/hopper.py " + cl_params
             print args
             my_env = os.environ.copy()
-            my_env["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
+            my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
             with open(os.devnull, 'w') as fp: # TODO: suppressing log, doesn't work 
                 subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
             return clopper_pb2.HopResults(status=self.status, name=self.instance_name)

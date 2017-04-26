@@ -5,7 +5,6 @@ Created on Mon Apr 17 09:02:46 2017
 
 @author: selin
 """
-import random
 
 class TestSuite(list):
     
@@ -13,15 +12,9 @@ class TestSuite(list):
         list.__init__(self)
         self.content = content
         
-    def randomize(self):
-        
-        random.shuffle(self)
-        return self
-    
     def nest(self, seq1, seq2, length):
         
         for i in xrange(length):
-            #TODO: remove this line
             tmp = TestSuite()
             tmp.append(seq1[i])
             tmp.append(seq2[i])

@@ -75,7 +75,7 @@ class VersionDistributor(object):
             else:
                 suite.append(target[i*x:(i+1)*x])
         suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
-        suite.randomize()
+        random.shuffle(suite)
         return suite
     
     def get_suite(self, instance):
@@ -205,7 +205,7 @@ class VersionTestDistributor(object):
     def get_suite(self, instance):
         versions = self.get_versions(instance.data)
         versions = self.split(instance.data, versions)
-        versions.randomize()
+        random.shuffle(versions)
         tests = self.get_tests(instance.data['project']+'/benchmarks')
         random.shuffle(tests)
         tests = self.split(instance.data, tests)      
@@ -253,7 +253,7 @@ class RandomDistributor(object):
     def get_suite(self, instance):
         versions = self.get_versions(instance.data)
         versions = self.split(instance.data, versions)
-        versions.randomize()
+        random.shuffle(versions)
         
         tests = self.get_tests(instance.data['project']+'/benchmarks')
         random.shuffle(tests)
