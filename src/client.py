@@ -20,13 +20,14 @@ def status_request(stubs):
     running = True
     for u in updates:
         print u.name + ' --- ' + u.status
+        # current instance has finished
         if running and u.status == 'FINISHED':
             running = False
+        # previous instance has finished, current is still running
         elif not running and u.status != 'FINISHED':
             running = True
     return running
         
-
 def initial_greeting(stubs):
     
     responses = [stub.SayHello(clopper_pb2.HelloRequest(request='')) for stub in stubs] # initial greeting request
@@ -43,15 +44,15 @@ def run(instances, mode='ALL'):
     #stubs = []
     running = True
     stubs = create_stubs(instances) 
-    initial_greeting(stubs)
-    # trigger hopper
-    
-    # start status-concept?
+    initial_greeting(stubs)    
+
     print "Requesting for status now..."
     running = status_request(stubs)
     time.sleep(10)
     print "Requesting for data of hopper now..."
     data = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
+    
+    # requesting stati from instances
     running = status_request(stubs)
     while running:
         time.sleep(7)
