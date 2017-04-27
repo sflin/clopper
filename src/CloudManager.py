@@ -15,24 +15,20 @@ import os
 from os.path import expanduser
 import shutil
 from Writer import Writer
+import OutputGenerator as og
 from Distributor import (Distributor, TestDistributor, VersionDistributor, 
                          VersionTestDistributor, RandomDistributor, 
                          DefaultDistributor, RandomVersionDistributor)
 
-def clean_up():
-    # clean up tar-dirs
-    #shutil.rmtree(expanduser('~/tmp'))
-    pass
-
-def shut_down(node_dict, driver=None):
+def clean_up(node_dict, driver=None):
     """Shut down instances."""
     
     for node in node_dict.iteritems():
         # shut down servers on instances
         cmd = "ssh selin@" + node[1] + " rm -rf ~/tmp"
         subprocess.call(cmd, shell=True)
-        #cmd = "ssh selin@" + node[1] + " rm -rf ~/output"
-        #subprocess.call(cmd, shell=True)
+        cmd = "ssh selin@" + node[1] + " rm -rf ~/output"
+        subprocess.call(cmd, shell=True)
         cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
         # close ssh connection
         #cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
@@ -40,10 +36,16 @@ def shut_down(node_dict, driver=None):
         # stop GCE instances
         if driver:
             driver.ex_stop_node(node)
+    # clean up tar-dirs
+    shutil.rmtree(expanduser('~/tmp'))
+    shutil.rmtree(expanduser('~/output'))    
 
-def get_results():
-    # TODO: implement method
-    pass
+def get_results(node_dict, data):
+    
+    for node in node_dict:    
+        cmd = "scp -i ~/.ssh/google_compute_engine selin@" + node[1] + ": ~/output/" + node[0] + "-output.csv ~/output"
+        subprocess.Popen(cmd, shell=True)
+    og.concat(data)
 
 def start_grpc_server(node_dict):
     """Start GRPC-server on cloud instances for communication."""
@@ -60,7 +62,7 @@ def transfer_file(node, file):
     """Transfer data via scp to instances."""
     
     ip = node[1]
-    # TODO: check if "scp " + file + " selin@" + ip + ":~/tmp" is enough
+    # -i identification-file
     cmd = "scp -i ~/.ssh/google_compute_engine " + str(file) + " selin@" + ip + ":~/tmp"
     print cmd
     subprocess.call(cmd, shell=True) # blocking shell
@@ -68,9 +70,8 @@ def transfer_file(node, file):
 def distribute_test_suite(node_dict, test_suite, data):
     
     # compress project-dir
-    project = shutil.make_archive('project','gztar',root_dir= data['project']) # results in project.gz.tar, store project as /project/"name"    
+    project = shutil.make_archive('project','gztar',root_dir= data['project']) # store project as /project/"name"    
     writer = Writer(data, test_suite.content)
-    
     #distribute test suite among instances
     for node, bundle in zip(node_dict.iteritems(), test_suite):
         config, cl = writer.generate_input(bundle) 
@@ -83,7 +84,7 @@ def distribute_test_suite(node_dict, test_suite, data):
         transfer_file(node, project)
         
 def create_GCE_driver(data):
-    """Create GCE driver. Adaptable to other cloud-providers."""
+    """Create GCE driver. Replacable by other cloud-providers."""
     
     user_id = data['user-id']
     key = data['key']
@@ -92,12 +93,31 @@ def create_GCE_driver(data):
     ComputeEngine = lc.get_driver(lc.DriverType.COMPUTE, lc.DriverType.COMPUTE.GCE)
     driver = ComputeEngine(user_id, key, project=project)
     return driver
-    
-def remote_hopper(driver):
+
+def remote_hopper(driver, data):
     """Create and boot GCE instances."""
     
     nodes = [driver.ex_get_node('instance-' + str(i)) for i in range(1, data['total']+1)]
-    bools = [driver.ex_start_node(node) for node in nodes]
+    [driver.ex_start_node(node) for node in nodes]
+    #nodes = driver.ex_create_multiple_nodes('instance-','n1-standard-2', image,
+                   #                         5, 'europe-west1-b', )
+    running_nodes = driver.wait_until_running(nodes)
+    node_dict={}
+    for node, ip in running_nodes:
+        node_dict[node.name] = ip[0]
+    return node_dict
+    
+def create_nodes(driver, data):
+    """Create and boot remote cloud instances. Replacable by other cloud-providers."""
+    
+    user_id = data['user-id']
+    key = data['key']
+    project = data['gce-project']
+    
+    ComputeEngine = lc.get_driver(lc.DriverType.COMPUTE, lc.DriverType.COMPUTE.GCE)
+    driver = ComputeEngine(user_id, key, project=project)    
+    nodes = [driver.ex_get_node('instance-' + str(i)) for i in range(1, data['total']+1)]
+    [driver.ex_start_node(node) for node in nodes]
     #nodes = driver.ex_create_multiple_nodes('instance-','n1-standard-2', image,
                    #                         5, 'europe-west1-b', )
     running_nodes = driver.wait_until_running(nodes)
@@ -110,8 +130,9 @@ def get_instances(data):
     mode = data['mode']
     
     if mode == 'libcloud':
-        driver = create_GCE_driver(data)
-        node_dict = remote_hopper(driver)
+        #driver = create_GCE_driver(data)
+        #node_dict = remote_hopper(driver, data)
+        node_dict = create_nodes(data)
     elif mode == 'ip':
         node_dict = data['ip-list']
     return node_dict
@@ -153,8 +174,13 @@ def parse_json(param):
 def run():
     # parse json
     data = parse_json(sys.argv[1])
-
-    #os.mkdir(expanduser('~/tmp'))
+    for folder in ('~/tmp', '~/output'):
+        try:
+            os.mkdir(expanduser(folder))
+        except OSError:
+            shutil.rmtree(expanduser(folder))
+            os.mkdir(expanduser(folder))
+    # TODO: to test
     driver = None
     
     # get list of running instances, format: {instance-i : ip}
@@ -176,9 +202,8 @@ def run():
     
     # shut down instances
     if ending == 'FINISHED':
-        get_results()
-        shut_down(driver, node_dict)
-    clean_up()
+        get_results(node_dict)
+    clean_up(node_dict, driver)
     
 if __name__ == '__main__':
     run()

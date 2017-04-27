@@ -17,17 +17,13 @@ name = socket.gethostname()
 def status_request(stubs):
     
     updates = [stub.UpdateStatus(clopper_pb2.StatusRequest(request='')) for stub in stubs]
-    running = True
     for u in updates:
         print u.name + ' --- ' + u.status
-        # current instance has finished
-        if running and u.status == 'FINISHED':
-            running = False
-        # previous instance has finished, current is still running
-        elif not running and u.status != 'FINISHED':
-            running = True
-    return running
-        
+    running = True
+    if all(u.status == 'FINISHED' for u in updates):
+        running = False
+    return running       
+ 
 def initial_greeting(stubs):
     
     responses = [stub.SayHello(clopper_pb2.HelloRequest(request='')) for stub in stubs] # initial greeting request
@@ -48,16 +44,16 @@ def run(instances, mode='ALL'):
 
     print "Requesting for status now..."
     running = status_request(stubs)
-    time.sleep(10)
+    time.sleep(4)
     print "Requesting for data of hopper now..."
-    data = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
+    [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
     
     # requesting stati from instances
     running = status_request(stubs)
     while running:
-        time.sleep(7)
+        time.sleep(5)
         running = status_request(stubs)
     return 'FINISHED'
     
 if __name__ == '__main__':
-  run(2, 'STATUS')
+    run(2, 'STATUS')

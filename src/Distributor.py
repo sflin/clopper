@@ -134,14 +134,18 @@ class TestDistributor(object):
         for 3 instances, generates output of format 
             [[[None],[t1]],[[None],[t2]],[[None],[t3]]]"""
             
-    def get_target(self, project):
+    def get_target(self, data):
         
-        target = parser.parse(project)
+        if data['CL-params']['--tests']:
+            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            return tests
+        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
         return target
     
     def split(self, data):
         
-        target = self.get_target(data['project']+'/benchmarks') # this must be the jmh root dir
+        target = self.get_target(data)
+        #target = self.get_target(data['project']+'/benchmarks') 
         random.shuffle(target)
         total_inst = data['total']
         x = len(target)/total_inst
@@ -181,9 +185,14 @@ class VersionTestDistributor(object):
         os.chdir(cwd)
         return target
     
-    def get_tests(self, project):
+    def get_tests(self, data):
         
-        target = parser.parse(project)
+        if data['CL-params']['--tests']:
+            print data['CL-params']['--tests']
+            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            print tests
+            return tests
+        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
         return target
     
     def split(self, data, target):
@@ -206,7 +215,7 @@ class VersionTestDistributor(object):
         versions = self.get_versions(instance.data)
         versions = self.split(instance.data, versions)
         random.shuffle(versions)
-        tests = self.get_tests(instance.data['project']+'/benchmarks')
+        tests = self.get_tests(instance.data)
         random.shuffle(tests)
         tests = self.split(instance.data, tests)      
         suite = TestSuite()
@@ -228,9 +237,12 @@ class RandomDistributor(object):
         os.chdir(cwd)
         return target
     
-    def get_tests(self, project):
+    def get_tests(self, data):
         
-        target = parser.parse(project)
+        if data['CL-params']['--tests']:
+            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            return tests
+        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
         return target
     
     def split(self, data, target):
@@ -255,7 +267,7 @@ class RandomDistributor(object):
         versions = self.split(instance.data, versions)
         random.shuffle(versions)
         
-        tests = self.get_tests(instance.data['project']+'/benchmarks')
+        tests = self.get_tests(instance.data)
         random.shuffle(tests)
         tests = self.split(instance.data, tests)      
         suite = TestSuite(content='random')
@@ -299,11 +311,12 @@ if __name__ == "__main__" :
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/clopper/config.xml",
                             "-o": "./output.csv",
                             "-t": "benchmark",
-                            "-b": "versions"
+                            "-b": "versions",
+                            "--tests": "'\\\.runtime_deserialize_1_int_field$|\\\.runtime_serialize_1_int_field$|\\\.testFoo$|\\\.baseline$'"
                           },
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-                          "config": "/home/selin/Documents/Uni/Bachelorthesis/clopper/config.xml",
-                          "distribution": "TestDistributor",
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                          "distribution": "VersionTestDistributor",
                           "status-mode": "ALL"
                         }""")
     distributor = Distributor(data, strategy=eval(data['distribution']))

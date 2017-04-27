@@ -10,6 +10,7 @@ from os.path import expanduser
 import shutil
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import json
 
 class Writer(object):
     """Writer generates customized config files and command line parameters 
@@ -58,7 +59,9 @@ class Writer(object):
                     if param == '-f':
                         cl_file.write(param + ' ' + '~/tmp/config/cloud-config-' + str(x + 1) + '.xml ')
                     elif param == '-o':
-                        cl_file.write(param + ' ' + '~/output/out-' + str(x+1) + '.csv ')
+                        cl_file.write(param + ' ' + '~/output/$HOSTNAME-out-' + str(x+1) + '.csv ')
+                    elif param == '--tests' and suite[0]:
+                        continue
                     else:
                         cl_file.write(param + ' ' + cl_params[param] + ' ')
                 if suite[0]: # if suite has elements, add --tests flag
@@ -113,4 +116,25 @@ class Writer(object):
         config = self.get_multi_configs(test_suite[0])
         param = self.get_parameters(test_suite[1], self.num)
         return config, param
-    
+
+if __name__ == "__main__" :
+    data = json.loads("""{
+                          "mode": "ip",
+                          "total": 3,
+                          "ip-list": {
+                            "instance-1": "130.211.94.53"
+                          },
+                          "CL-params": {
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/clopper/config.xml",
+                            "-o": "./output.csv",
+                            "-t": "benchmark",
+                            "-b": "versions",
+                            "--tests": "'\\\.runtime_deserialize_1_int_field$|\\\.runtime_serialize_1_int_field$|\\\.testFoo$|\\\.baseline$'"
+                          },
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                          "distribution": "RandomDistributor",
+                          "status-mode": "ALL"
+                        }""")
+    writer = Writer(data, content='random')
+    test_data = writer.get_parameters([None], 1)

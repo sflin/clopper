@@ -29,7 +29,7 @@ def prepare_execution():
     """Unpack project and get CL parametres for hopper execution."""
     
     try:
-        tar = tarfile.open(expanduser('~/tmp/project.tar.gz')) # remove ~/tmp/project after execution!
+        tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/project'))
         tar.close()
     except IOError:
@@ -63,7 +63,11 @@ def verification():
         if p.name() == "python" and len(p.cmdline()) > 1 and "hopper.py" in p.cmdline()[1]:
             return True
     return False
-        
+def store_files():
+    # TODO: extend method: write files to cloud storage
+    cmd = '{ sed -n "14p" ~/output/instance-1-out.csv; for f in ~/output/instance-*-output.csv; do tail -n+15 "$f"; done; } > $HOSTNAME-output.csv'
+    subprocess.Popen(cmd, shell=True)
+
 def has_finished():
     try:
         num_files = len(os.listdir(expanduser('~/output')))
@@ -72,6 +76,7 @@ def has_finished():
         return False
     global _EXECUTIONS
     if num_files == _EXECUTIONS:
+        store_files()
         return True
     else:
         return False
@@ -165,7 +170,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             print args
             my_env = os.environ.copy()
             my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
-            with open(os.devnull, 'w') as fp: # TODO: suppressing log, doesn't work 
+            with open(os.devnull, 'w') as fp:
                 subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
             return clopper_pb2.HopResults(status=self.status, name=self.instance_name)
         else:
