@@ -16,6 +16,7 @@ from os.path import expanduser
 import shutil
 from Writer import Writer
 import OutputGenerator as og
+from google.cloud import storage
 from Distributor import (Distributor, TestDistributor, VersionDistributor, 
                          VersionTestDistributor, RandomDistributor, 
                          DefaultDistributor, RandomVersionDistributor)
@@ -25,35 +26,44 @@ def clean_up(node_dict, driver=None):
     
     for node in node_dict.iteritems():
         # shut down servers on instances
-        cmd = "ssh selin@" + node[1] + " rm -rf ~/tmp"
-        subprocess.call(cmd, shell=True)
-        cmd = "ssh selin@" + node[1] + " rm -rf ~/output"
-        subprocess.call(cmd, shell=True)
         cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
-        # close ssh connection
-        #cmd = "fuser -k 5005" + node[0][-1] + "/tcp"
         subprocess.call(cmd, shell=True)
         # stop GCE instances
         if driver:
             driver.ex_stop_node(node)
-    # clean up tar-dirs
+    # clean up tar-dirs on local host
     shutil.rmtree(expanduser('~/tmp'))
-    shutil.rmtree(expanduser('~/output'))    
+    shutil.rmtree(expanduser('~/output'))  
+    # TODO: clean up next code-block
+    BUCKET = 'clopper-storage'
+    storage_client = storage.Client(project='bt-sfabel')
+    bucket = storage_client.get_bucket(BUCKET)
+    bucket_files = bucket.list_blobs()
+    for bf in bucket_files:
+        bf.delete()
 
 def get_results(node_dict, data):
-    
-    for node in node_dict:    
+    #TODO: clean up method
+    BUCKET = 'clopper-storage'
+    storage_client = storage.Client(project='bt-sfabel')
+    bucket = storage_client.get_bucket(BUCKET)
+    bucket_files = bucket.list_blobs()
+    for bf in bucket_files:
+        blob = bucket.blob(bf)
+        destination = '~/output/' + str(bf)
+        blob.download_from_filename(destination)
+        #print blob.name
+    """for node in node_dict:    
         cmd = "scp -i ~/.ssh/google_compute_engine selin@" + node[1] + ": ~/output/" + node[0] + "-output.csv ~/output"
-        subprocess.Popen(cmd, shell=True)
+        subprocess.Popen(cmd, shell=True)"""
     og.concat(data)
 
 def start_grpc_server(node_dict):
     """Start GRPC-server on cloud instances for communication."""
     
     for node in node_dict.iteritems():
-        port = node[0][-1]
+        port = node[0].replace('instance-', '')
         ip = node[1]
-        cmd = "python ./server" + str(port) + ".py"
         cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ~/server.py' # keys needed? cloud-manager ~/clopper/server.py
         print cmd
         subprocess.Popen(cmd, shell=True)

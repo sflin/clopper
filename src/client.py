@@ -20,6 +20,8 @@ def status_request(stubs):
     for u in updates:
         print u.name + ' --- ' + u.status
     running = True
+    if any(u.status == 'ERROR' for u in updates):
+        print "ERROR on " + u.name
     if all(u.status == 'FINISHED' for u in updates):
         running = False
     return running       
@@ -56,4 +58,4 @@ def run(instances, mode='ALL'):
     return 'FINISHED'
     
 if __name__ == '__main__':
-    run(2, 'STATUS')
+    run(1, 'STATUS')
