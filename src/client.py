@@ -7,30 +7,25 @@ This is the distributed hopper-extension which runs on the local machine
 The Python implementation of the hopperextension.Clopper Client."""
 
 import grpc
-import time
 import socket
+import threading
 import clopper_pb2
 import clopper_pb2_grpc
 
-name = socket.gethostname()
-
-def status_request(stubs):
+def status_request(stub):
     
-    updates = [stub.UpdateStatus(clopper_pb2.StatusRequest(request='')) for stub in stubs]
-    for u in updates:
-        print u.name + ' --- ' + u.status
-    running = True
-    if any(u.status == 'ERROR' for u in updates):
-        print "ERROR on " + u.name
-    if all(u.status == 'FINISHED' for u in updates):
-        running = False
-    return running       
+    for u in stub.UpdateStatus(clopper_pb2.StatusRequest(request='30')):
+        if u.status == 'ERROR':
+            print "ERROR on " + u.name
+        print u.name + ' --- ' + u.status      
+    return
  
 def initial_greeting(stubs):
     
+    host = socket.gethostname()
     responses = [stub.SayHello(clopper_pb2.HelloRequest(request='')) for stub in stubs] # initial greeting request
     for r in responses:
-        print name + ' received: ' + r.greeting
+        print host + ' received: ' + r.greeting
 
 def create_stubs(instances):
     
@@ -39,22 +34,19 @@ def create_stubs(instances):
     return stubs
 
 def run(instances, mode='ALL'):
-    #stubs = []
-    running = True
     stubs = create_stubs(instances) 
     initial_greeting(stubs)    
 
-    print "Requesting for status now..."
-    running = status_request(stubs)
-    time.sleep(4)
     print "Requesting for data of hopper now..."
-    [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
-    
+    stati = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='HOP')) for stub in stubs]
+    for s in stati:
+        print s.name + ' --- ' + s.status
     # requesting stati from instances
-    running = status_request(stubs)
-    while running:
-        time.sleep(5)
-        running = status_request(stubs)
+    threads = [threading.Thread(target = status_request, args = (stub,)) for stub in stubs]
+    print "Requesting for stati of hopper now..."
+    [t.start() for t in threads]
+    [thread.join() for thread in threads]
+    print 'Shutting down Cloud-Manager-Client'
     return 'FINISHED'
     
 if __name__ == '__main__':

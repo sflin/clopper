@@ -21,7 +21,7 @@ class ClopperStub(object):
         request_serializer=clopper__pb2.HelloRequest.SerializeToString,
         response_deserializer=clopper__pb2.Greeting.FromString,
         )
-    self.UpdateStatus = channel.unary_unary(
+    self.UpdateStatus = channel.unary_stream(
         '/hopperextension.Clopper/UpdateStatus',
         request_serializer=clopper__pb2.StatusRequest.SerializeToString,
         response_deserializer=clopper__pb2.InstanceUpdate.FromString,
@@ -66,7 +66,7 @@ def add_ClopperServicer_to_server(servicer, server):
           request_deserializer=clopper__pb2.HelloRequest.FromString,
           response_serializer=clopper__pb2.Greeting.SerializeToString,
       ),
-      'UpdateStatus': grpc.unary_unary_rpc_method_handler(
+      'UpdateStatus': grpc.unary_stream_rpc_method_handler(
           servicer.UpdateStatus,
           request_deserializer=clopper__pb2.StatusRequest.FromString,
           response_serializer=clopper__pb2.InstanceUpdate.SerializeToString,

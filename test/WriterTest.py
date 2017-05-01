@@ -16,7 +16,7 @@ from src.Distributor import (Distributor, VersionDistributor,
                                  DefaultDistributor)
 import re
 from os.path import expanduser
-from clopper.Writer import Writer
+from src.Writer import Writer
 import xml.etree.ElementTree as ET
 
 class WriterTest(unittest.TestCase):
@@ -511,7 +511,12 @@ class RandomWriterTest(unittest.TestCase):
         shutil.rmtree('./test-param')
 
 if __name__ == '__main__':
+    try:
+        os.mkdir(expanduser('~/tmp'))
+    except OSError:
+        pass
     suite = unittest.TestLoader().loadTestsFromTestCase(WriterTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
     suite = unittest.TestLoader().loadTestsFromTestCase(RandomWriterTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
+    shutil.rmtree(expanduser('~/tmp'))

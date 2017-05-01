@@ -28,6 +28,10 @@ def clean_up(node_dict, driver=None):
         # shut down servers on instances
         cmd = "ssh selin@" + node[1] + " fuser -k 8080/tcp"
         subprocess.call(cmd, shell=True)
+        cmd = "ssh selin@" + node[1] + " rm -rf tmp"
+        subprocess.call(cmd, shell=True)
+        cmd = "ssh selin@" + node[1] + " rm -rf output"
+        subprocess.call(cmd, shell=True)
         # stop GCE instances
         if driver:
             driver.ex_stop_node(node)
@@ -44,18 +48,18 @@ def clean_up(node_dict, driver=None):
 
 def get_results(node_dict, data):
     #TODO: clean up method
+    try:
+        os.mkdir(expanduser('~/output'))
+    except OSError:
+        shutil.rmtree(expanduser('~/output'))
+        os.mkdir(expanduser('~/output'))
     BUCKET = 'clopper-storage'
     storage_client = storage.Client(project='bt-sfabel')
     bucket = storage_client.get_bucket(BUCKET)
     bucket_files = bucket.list_blobs()
     for bf in bucket_files:
-        blob = bucket.blob(bf)
-        destination = '~/output/' + str(bf)
-        blob.download_from_filename(destination)
-        #print blob.name
-    """for node in node_dict:    
-        cmd = "scp -i ~/.ssh/google_compute_engine selin@" + node[1] + ": ~/output/" + node[0] + "-output.csv ~/output"
-        subprocess.Popen(cmd, shell=True)"""
+        blob = bucket.blob(bf.name)
+        blob.download_to_filename(expanduser('~/output/' + str(blob.name) + '.csv'))
     og.concat(data)
 
 def start_grpc_server(node_dict):
@@ -64,8 +68,8 @@ def start_grpc_server(node_dict):
     for node in node_dict.iteritems():
         port = node[0].replace('instance-', '')
         ip = node[1]
+        # TODO: check path
         cmd = "ssh -L 222" + port + ":localhost:8080 selin@" + ip + ' python ~/server.py' # keys needed? cloud-manager ~/clopper/server.py
-        print cmd
         subprocess.Popen(cmd, shell=True)
 
 def transfer_file(node, file):
@@ -75,12 +79,12 @@ def transfer_file(node, file):
     # -i identification-file
     cmd = "scp -i ~/.ssh/google_compute_engine " + str(file) + " selin@" + ip + ":~/tmp"
     print cmd
-    subprocess.call(cmd, shell=True) # blocking shell
+    subprocess.call(cmd, shell=True)
 
 def distribute_test_suite(node_dict, test_suite, data):
     
     # compress project-dir
-    project = shutil.make_archive('project','gztar',root_dir= data['project']) # store project as /project/"name"    
+    project = shutil.make_archive(expanduser('~/tmp/project'),'gztar',root_dir= data['project']) # store project as /project/"name"    
     writer = Writer(data, test_suite.content)
     #distribute test suite among instances
     for node, bundle in zip(node_dict.iteritems(), test_suite):
@@ -89,8 +93,8 @@ def distribute_test_suite(node_dict, test_suite, data):
         subprocess.call(cmd, shell=True)
         cmd = "ssh selin@" + node[1] + " mkdir ~/output"
         subprocess.call(cmd, shell=True)
-        transfer_file(node, config) # cloud-config.xml
-        transfer_file(node, cl) # cl-params.txt
+        transfer_file(node, config) 
+        transfer_file(node, cl)
         transfer_file(node, project)
         
 def create_GCE_driver(data):
@@ -184,12 +188,11 @@ def parse_json(param):
 def run():
     # parse json
     data = parse_json(sys.argv[1])
-    for folder in ('~/tmp', '~/output'):
-        try:
-            os.mkdir(expanduser(folder))
-        except OSError:
-            shutil.rmtree(expanduser(folder))
-            os.mkdir(expanduser(folder))
+    try:
+        os.mkdir(expanduser('~/tmp'))
+    except OSError:
+        shutil.rmtree(expanduser('~/tmp'))
+        os.mkdir(expanduser('~/tmp'))
     # TODO: to test
     driver = None
     
@@ -212,7 +215,7 @@ def run():
     
     # shut down instances
     if ending == 'FINISHED':
-        get_results(node_dict)
+        get_results(node_dict, data)
     clean_up(node_dict, driver)
     
 if __name__ == '__main__':

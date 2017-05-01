@@ -28,7 +28,7 @@ class DistributorTest (unittest.TestCase):
                           },
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "distribution": "test",
+                          "distribution": "VersionDistributor",
                           "status-mode": "ALL"
                         }""")
     

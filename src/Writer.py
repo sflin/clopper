@@ -59,7 +59,7 @@ class Writer(object):
                     if param == '-f':
                         cl_file.write(param + ' ' + '~/tmp/config/cloud-config-' + str(x + 1) + '.xml ')
                     elif param == '-o':
-                        cl_file.write(param + ' ' + '~/output/$HOSTNAME-out-' + str(x+1) + '.csv ')
+                        cl_file.write(param + ' ' + '~/output/out-' + str(x+1) + '.csv ')
                     elif param == '--tests' and suite[0]:
                         continue
                     else:

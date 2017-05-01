@@ -8,7 +8,7 @@ service Clopper {
         rpc SayHello (HelloRequest) returns (Greeting) {}
         
         // Status Updates
-        rpc UpdateStatus (StatusRequest) returns (InstanceUpdate) {}
+        rpc UpdateStatus (StatusRequest) returns (stream InstanceUpdate) {}
         
         // Execute hopper
         rpc ExecuteHopper (HopRequest) returns (HopResults) {}

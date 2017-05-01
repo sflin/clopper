@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='clopper.proto',
   package='hopperextension',
   syntax='proto3',
-  serialized_pb=_b('\n\rclopper.proto\x12\x0fhopperextension\"\x1f\n\x0cHelloRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\"\x1c\n\x08Greeting\x12\x10\n\x08greeting\x18\x01 \x01(\t\" \n\rStatusRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\".\n\x0eInstanceUpdate\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"\x1d\n\nHopRequest\x12\x0f\n\x07trigger\x18\x01 \x01(\t\"8\n\nHopResults\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\xf1\x01\n\x07\x43lopper\x12\x46\n\x08SayHello\x12\x1d.hopperextension.HelloRequest\x1a\x19.hopperextension.Greeting\"\x00\x12Q\n\x0cUpdateStatus\x12\x1e.hopperextension.StatusRequest\x1a\x1f.hopperextension.InstanceUpdate\"\x00\x12K\n\rExecuteHopper\x12\x1b.hopperextension.HopRequest\x1a\x1b.hopperextension.HopResults\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rclopper.proto\x12\x0fhopperextension\"\x1f\n\x0cHelloRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\"\x1c\n\x08Greeting\x12\x10\n\x08greeting\x18\x01 \x01(\t\" \n\rStatusRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\".\n\x0eInstanceUpdate\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"\x1d\n\nHopRequest\x12\x0f\n\x07trigger\x18\x01 \x01(\t\"8\n\nHopResults\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\xf3\x01\n\x07\x43lopper\x12\x46\n\x08SayHello\x12\x1d.hopperextension.HelloRequest\x1a\x19.hopperextension.Greeting\"\x00\x12S\n\x0cUpdateStatus\x12\x1e.hopperextension.StatusRequest\x1a\x1f.hopperextension.InstanceUpdate\"\x00\x30\x01\x12K\n\rExecuteHopper\x12\x1b.hopperextension.HopRequest\x1a\x1b.hopperextension.HopResults\"\x00\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -307,7 +307,7 @@ try:
           request_serializer=HelloRequest.SerializeToString,
           response_deserializer=Greeting.FromString,
           )
-      self.UpdateStatus = channel.unary_unary(
+      self.UpdateStatus = channel.unary_stream(
           '/hopperextension.Clopper/UpdateStatus',
           request_serializer=StatusRequest.SerializeToString,
           response_deserializer=InstanceUpdate.FromString,
@@ -352,7 +352,7 @@ try:
             request_deserializer=HelloRequest.FromString,
             response_serializer=Greeting.SerializeToString,
         ),
-        'UpdateStatus': grpc.unary_unary_rpc_method_handler(
+        'UpdateStatus': grpc.unary_stream_rpc_method_handler(
             servicer.UpdateStatus,
             request_deserializer=StatusRequest.FromString,
             response_serializer=InstanceUpdate.SerializeToString,
@@ -407,7 +407,6 @@ try:
       """Status Updates
       """
       raise NotImplementedError()
-    UpdateStatus.future = None
     def ExecuteHopper(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
       """Execute hopper
       """
@@ -434,7 +433,7 @@ try:
     method_implementations = {
       ('hopperextension.Clopper', 'ExecuteHopper'): face_utilities.unary_unary_inline(servicer.ExecuteHopper),
       ('hopperextension.Clopper', 'SayHello'): face_utilities.unary_unary_inline(servicer.SayHello),
-      ('hopperextension.Clopper', 'UpdateStatus'): face_utilities.unary_unary_inline(servicer.UpdateStatus),
+      ('hopperextension.Clopper', 'UpdateStatus'): face_utilities.unary_stream_inline(servicer.UpdateStatus),
     }
     server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
     return beta_implementations.server(method_implementations, options=server_options)
@@ -459,7 +458,7 @@ try:
     cardinalities = {
       'ExecuteHopper': cardinality.Cardinality.UNARY_UNARY,
       'SayHello': cardinality.Cardinality.UNARY_UNARY,
-      'UpdateStatus': cardinality.Cardinality.UNARY_UNARY,
+      'UpdateStatus': cardinality.Cardinality.UNARY_STREAM,
     }
     stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
     return beta_implementations.dynamic_stub(channel, 'hopperextension.Clopper', cardinalities, options=stub_options)

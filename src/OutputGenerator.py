@@ -8,6 +8,8 @@ Created on Thu Apr 27 14:36:33 2017
 import json
 from os.path import expanduser
 import subprocess
+import glob
+import os
 
 def write_configuration_header(data):
     
@@ -33,7 +35,8 @@ def concat(data):
         for key, val in params.iteritems():
             file.write("# %s -> %s\n" % (key, val))
         file.write("Project;Version;SHA;Configuration;Test;RawVal\n") # write header
-    cmd = '{ cat ~/output/tmp.csv; for f in ~/output/instance-*-out-*.csv; do tail -n+15 "$f"; done } > ' + params['outfile']
+    os.chdir(expanduser('~'))
+    cmd = '{ cat ~/output/tmp.csv; for f in ~/output/instance-*.csv; do tail -n+15 "$f"; done } > ' + params['outfile']
     subprocess.call(cmd, shell=True)
     
 if __name__ == "__main__" :

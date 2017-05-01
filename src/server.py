@@ -16,7 +16,7 @@ import grpc
 import os
 import clopper_pb2
 import clopper_pb2_grpc
-import psutil
+import commands
 from os.path import expanduser
 import shutil
 import glob
@@ -61,26 +61,23 @@ def prepare_execution():
 
 def verification():
     """Check if hopper is running."""
-    
-    for pid in psutil.pids():
-        p = psutil.Process(pid)
-        if p.name() == "python" and len(p.cmdline()) > 1 and "hopper.py" in p.cmdline()[1]:
-            return True
-    return False
+
+    if commands.getstatusoutput("ps aux | grep -e hopper.py | grep -v grep")[1]:
+        return True
+    else:
+        return False
 
 def store_files():
     """After each execution, write file to cloud storage."""
     
-    #TODO: configure storage bucket on instance
     storage_client = storage.Client(project='bt-sfabel')
     bucket = storage_client.get_bucket('clopper-storage')
     files = glob.glob(expanduser('~/output/*.csv'))
     for file in files:
-        blob = bucket.blob(file.remove('~/output/'))
+        fn = socket.gethostname() + '-' + str(os.path.basename(file))
+        blob = bucket.blob(fn)
         blob.upload_from_filename(file)
         os.remove(file)
-    #cmd = '{ for f in out-*.csv; do tail -n+15 "$f"; done } > $HOSTNAME-output.csv'
-    #subprocess.Popen(cmd, shell=True)
 
 def has_finished():
     """Trigger file storing if output-directory has files
@@ -90,8 +87,8 @@ def has_finished():
         store_files()
     global _EXECUTIONS
     if len(glob.glob(expanduser('~/tmp/params/*'))) == _EXECUTIONS:
-        # shutil.rmtree(expanduser('~/output'))
-        # shutil.rmtree(expanduser('~/tmp'))
+        shutil.rmtree(expanduser('~/output'))
+        shutil.rmtree(expanduser('~/tmp'))
         return True
     else:
         return False
@@ -105,11 +102,12 @@ def do_more_work():
         with open(expanduser("~/tmp/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
             cl_params = f.read()
         args = "python ~/hopper/hopper.py " + cl_params
+        print args
         my_env = os.environ.copy()
         my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
         with open(os.devnull, 'w') as fp:
             subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
-        return True
+            return True
     else:
         return False
         
@@ -120,17 +118,20 @@ def execute_hopper():
     if not: check for more work
     else, status ERROR"""
     
+    print 'enter thread'
     global _STATE 
     while _STATE != 'FINISHED':
         if verification():
             _STATE = 'HOPPING'
-        elif has_finished:
+        elif has_finished():
+            print 'finish work'
             _STATE = 'FINISHED'
         elif do_more_work():
+            print 'start hopping'
             _STATE = 'HOPPING'
         else:
+            print 'unknown error'
             _STATE = 'ERROR'
-            # TODO: exit thread?
     print 'Exit thread'
 
 class Clopper(clopper_pb2_grpc.ClopperServicer):
@@ -147,14 +148,17 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
                                     % self.instance_name)
         
     def UpdateStatus(self, request, context):
-        # TODO: check thread alive?
         global _STATE
-        self.status = _STATE
-        return clopper_pb2.InstanceUpdate(status=self.status, name=self.instance_name)
+        counter = 0
+        while self.thread.isAlive(): 
+            time.sleep(1)
+            counter +=1
+            if self.status != _STATE or counter % int(request.request) == 0:
+                self.status = _STATE
+                yield clopper_pb2.InstanceUpdate(status = self.status, name = self.instance_name)
      
     def ExecuteHopper(self, request, context):
         if request.trigger == 'HOP':
-            print "prepare for hopping now"
             prepare_execution()
             self.thread.start()
             return clopper_pb2.HopResults(status='PREPARING', name=self.instance_name)
