@@ -20,11 +20,10 @@ import commands
 from os.path import expanduser
 import shutil
 import glob
-from google.cloud import storage
 import threading
 
 _STATE = 'SLEEPING'
-_ONE_MIN_IN_SECONDS = 60
+_ONE_DAY_IN_SECONDS = 60 * 60 * 24
 _EXECUTIONS = 0
 
 def prepare_execution():
@@ -35,7 +34,6 @@ def prepare_execution():
         tar.extractall(path=expanduser('~/tmp/project'))
         tar.close()
     except IOError:
-        print "Project found."
         shutil.rmtree(expanduser('~/tmp/project'))
         tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/project'))
@@ -44,7 +42,6 @@ def prepare_execution():
         tar.extractall(path=expanduser('~/tmp/config'))
         tar.close()
     except IOError:
-        print "Condition already satisfied."
         shutil.rmtree(expanduser('~/tmp/config'))
         tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/config'))
@@ -53,7 +50,6 @@ def prepare_execution():
         tar.extractall(path=expanduser('~/tmp/params'))
         tar.close()
     except IOError:
-        print "Condition already satisfied."
         shutil.rmtree(expanduser('~/tmp/params'))
         tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/params'))
@@ -67,34 +63,19 @@ def verification():
     else:
         return False
 
-def store_files():
-    """After each execution, write file to cloud storage."""
-    
-    storage_client = storage.Client(project='bt-sfabel')
-    bucket = storage_client.get_bucket('clopper-storage')
-    files = glob.glob(expanduser('~/output/*.csv'))
-    for file in files:
-        fn = socket.gethostname() + '-' + str(os.path.basename(file))
-        blob = bucket.blob(fn)
-        blob.upload_from_filename(file)
-        os.remove(file)
-
 def has_finished():
     """Trigger file storing if output-directory has files
         and check for more work."""
 
-    if len(glob.glob(expanduser('~/output/*'))) > 0: # files to store
-        store_files()
     global _EXECUTIONS
     if len(glob.glob(expanduser('~/tmp/params/*'))) == _EXECUTIONS:
-        shutil.rmtree(expanduser('~/output'))
         shutil.rmtree(expanduser('~/tmp'))
         return True
     else:
         return False
     
 def do_more_work():
-    """Check if there is more work to do and call hopper execution."""
+    """Check if there is more work to do and call hopper to compute."""
     
     global _EXECUTIONS
     if _EXECUTIONS < len(glob.glob(expanduser('~/tmp/params/*'))):
@@ -118,34 +99,30 @@ def execute_hopper():
     if not: check for more work
     else, status ERROR"""
     
-    print 'enter thread'
     global _STATE 
     while _STATE != 'FINISHED':
         if verification():
             _STATE = 'HOPPING'
         elif has_finished():
-            print 'finish work'
             _STATE = 'FINISHED'
         elif do_more_work():
-            print 'start hopping'
             _STATE = 'HOPPING'
         else:
-            print 'unknown error'
+            # TODO: dead code
             _STATE = 'ERROR'
-    print 'Exit thread'
-
+def clean_up():
+    subprocess.Popen('fuser -k 8080/tcp', shell=True)
+    
 class Clopper(clopper_pb2_grpc.ClopperServicer):
         
     status = 'SLEEPING'
-    mode = 'NEW'
     instance_name = socket.gethostname()
     thread = threading.Thread(target=execute_hopper)
     
 
     def SayHello(self, request, context):        
         self.status = 'RUNNING'
-        return clopper_pb2.Greeting(greeting = "Hello from %s" 
-                                    % self.instance_name)
+        return clopper_pb2.Greeting(greeting = "Hello from %s" % self.instance_name)
         
     def UpdateStatus(self, request, context):
         global _STATE
@@ -156,14 +133,14 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             if self.status != _STATE or counter % int(request.request) == 0:
                 self.status = _STATE
                 yield clopper_pb2.InstanceUpdate(status = self.status, name = self.instance_name)
+        print 'hi'
+        clean_up()
      
     def ExecuteHopper(self, request, context):
-        if request.trigger == 'HOP':
-            prepare_execution()
-            self.thread.start()
-            return clopper_pb2.HopResults(status='PREPARING', name=self.instance_name)
-        else:
-            return clopper_pb2.HopResults(status='ERROR', name=self.instance_name)
+        prepare_execution()
+        self.status = 'PREPARING'
+        self.thread.start()
+        return clopper_pb2.HopResults(status=self.status, name=self.instance_name)
     
     
 def serve():
@@ -173,7 +150,7 @@ def serve():
     server.start()
     try:
         while True:
-            time.sleep(_ONE_MIN_IN_SECONDS)
+            time.sleep(_ONE_DAY_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
 

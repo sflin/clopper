@@ -9,16 +9,8 @@ Created on Wed Apr  5 11:17:22 2017
 
 import os
 import re
-import xml.etree.ElementTree as ET
 
 def parse(project):
-    # get package: from config.xml jmh bench root dir and traverse down until find file .Benchmark
-    # get config -->
-    # pass ip-config?
-    #root = ET.parse(config).getroot()
-    #rootdir = root.find('.//project/jmh_root').attrib['dir']
-    # find <jmh-root-dir>
-    # assign
     # TODO: extend method for unit tests (@Test)
     test_list = []
     annot_pat = re.compile('@Benchmark$')
@@ -29,7 +21,6 @@ def parse(project):
         for file in files:
             #if re.search(file_pat, file):
              #   test_list.append(re.search(file_pat, file).group(1))
-            # open files
             filepath = subdir + os.sep + file
             with open(filepath, 'r') as f:
                 for line in f:
@@ -42,8 +33,6 @@ def parse(project):
             #elif re.search(unit_pat, line):
              #   test_name = re.search(name_pat, line)    
               #  test_list.append(test_name.group(1)) # store name in list
-    #for x in test_list:
-    #    print x
     return test_list
 
 if __name__ == '__main__':
