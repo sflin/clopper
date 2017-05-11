@@ -34,11 +34,3 @@ def parse(project):
              #   test_name = re.search(name_pat, line)    
               #  test_list.append(test_name.group(1)) # store name in list
     return test_list
-
-if __name__ == '__main__':
-    t1 = parse('/home/selin/Documents/Uni/Bachelorthesis/project')
-    t2 = parse('/home/selin/Documents/Uni/Bachelorthesis/project/benchmarks')
-    print len(t1)
-    print len(t2)
-
-           

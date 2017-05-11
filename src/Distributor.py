@@ -7,7 +7,6 @@ Created on Thu Apr 13 10:14:33 2017
 """
 
 import random
-import json
 import parser
 from MvnCommitWalker import MvnCommitWalker
 from MvnVersionWalker import MvnVersionWalker
@@ -37,8 +36,6 @@ class Distributor(object):
         if(self.action):
             return self.action.get_suite(self)
         else:
-            #suite = [(None, None) for in range(self.data['total'])]
-            #return suite
             raise UnboundLocalError('Exception raised, no such strategyClass!')
              
             
@@ -80,7 +77,7 @@ class VersionDistributor(object):
         result = TestSuite()
         total_inst = instance.data['total']
         target = self.get_target(instance.data)
-        [target.append([None]) for x in range(0, total_inst - len(target))]
+        [target.append(None) for x in range(0, total_inst - len(target))]
         suite = self.split(target, total_inst) 
         result = result.nest(suite, total_inst*[[None]], total_inst)
         return result
@@ -120,7 +117,7 @@ class RandomVersionDistributor(object):
         result = TestSuite(content='random')
         total_inst = instance.data['total']
         target = self.get_target(instance.data)
-        [target.append([None]) for x in range(0, total_inst - len(target))]
+        [target.append(None) for x in range(0, total_inst - len(target))]
         suite = self.split(target, total_inst)
         result = result.nest(suite, total_inst*[[None]], total_inst)
         return result
@@ -152,7 +149,7 @@ class TestDistributor(object):
         result = TestSuite()
         total_inst = instance.data['total']
         target = self.get_target(instance.data)
-        [target.append([None]) for x in range(0, total_inst - len(target))]   
+        [target.append(None) for x in range(0, total_inst - len(target))]   
         suite = self.split(target, total_inst)
         result = result.nest(total_inst*[[None]], suite, total_inst)
         return result
@@ -181,9 +178,7 @@ class VersionTestDistributor(object):
     def get_tests(self, data):
         
         if data['CL-params'].has_key('--tests'):
-            #print data['CL-params']['--tests']
             tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
-            #print tests
             return tests
         target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
         return target
@@ -272,31 +267,3 @@ class RandomDistributor(object):
         suite = TestSuite(content='random')
         suite = suite.nest(versions, tests, total_inst)
         return suite       
-    
-if __name__ == "__main__" :
-    data = json.loads("""{
-                          "mode": "ip",
-                          "total": 3,
-                          "ip-list": {
-                            "instance-1": "130.211.94.53"
-                          },
-                          "CL-params": {
-                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                            "-o": "./output.csv",
-                            "-t": "benchmark",
-                            "-b": "commits"
-                            
-                          },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-                          "config": "/home/selin/Documents/Uni/Bachelorthesis/hopper/config.xml",
-                          "distribution": "RandomDistributor",
-                          "status-mode": "ALL"
-                        }""")
-    dis = VersionDistributor()
-    target = dis.get_target(data)
-    print target
-    """distributor = Distributor(data, strategy=eval(data['distribution']))
-    test_data = distributor.get_suite()
-    for item in test_data:
-        print item"""
-    

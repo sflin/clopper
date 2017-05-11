@@ -36,15 +36,14 @@ def run(node_dict):
     ports = [node[0].replace('instance-','') for node in node_dict.iteritems()]
     stubs = create_stubs(ports) 
     initial_greeting(stubs) 
-    logging.info("Trigger hopper preparation...")
+    logging.info("Trigger hopper execution...")
     stati = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='')) for stub in stubs]
     for s in stati:
         logging.info(s.name + ' --- ' + s.status)
     threads = [threading.Thread(target = status_request, args = (stub,)) for stub in stubs]
-    logging.info("Trigger hopper execution...")
     [t.start() for t in threads]
     [thread.join() for thread in threads]
     logging.info("Shutting down cloud-manager-client...")
-    
+
 if __name__ == '__main__':
     run({'instance-1':'1','instance-2':'2'})

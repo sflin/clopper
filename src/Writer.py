@@ -11,7 +11,6 @@ import shutil
 import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-import json
 
 class Writer(object):
     """Writer generates customized config files and command line parameters 
@@ -47,9 +46,8 @@ class Writer(object):
     def get_current_params(self):
         
         cl_dict = self.data['CL-params']
-        # TODO: test whether to add -o here
-        param_dict = {'-f':cl_dict['-f'], '-o':'~/tmp/out.csv', '-t':cl_dict['-t']}
-        
+        param_dict = {'-f':cl_dict['-f'], '-o':'~/tmp/out.csv', '-t':cl_dict['-t'],
+                      '--cloud':self.data['project-id']}
         mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
                    '--mode', '--skip-noncode','--build-type']
         
@@ -71,9 +69,6 @@ class Writer(object):
                 for p in params:
                     if p == '-f':
                         cl_file.write(p + ' ' + '~/tmp/config/cloud-config-' + str(x + 1) + '.xml ')
-                    # TODO: remove those two lines
-                    elif p == '-o':
-                        cl_file.write(p + ' ' + '~/tmp/out.csv ')
                     elif p == '--tests' and suite[0]:
                         continue
                     else:
@@ -85,7 +80,6 @@ class Writer(object):
                         tmp += suite[i] + "$|\."
                     tmp += suite[-1] + "$'"
                     cl_file.write(tmp)
-                cl_file.write(' --cloud=True')
         os.chdir('..')
         params = shutil.make_archive('params', 'gztar', root_dir=expanduser('~/tmp/params'))
         shutil.rmtree(expanduser('~/tmp/params'))
@@ -93,22 +87,22 @@ class Writer(object):
     
     def get_config(self, suite, number):
         # TODO: adapt for unit-tests
-        tree = ET.parse(self.data['config'])
+        tree = ET.parse(self.data['CL-params']['-f'])
         root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        root.find('.//project').attrib['dir'] = '/home/selin/tmp/project/' + root.find('.//project').attrib['dir'].split('/')[-1]
-        root.find('.//project/jmh_root').attrib['dir'] = '/home/selin/tmp/project/benchmarks'
+        dir = "/home/" + self.data['username'] + "/tmp/project/" + root.find('.//project').attrib['dir'].split('/')[-1]
+        root.find('.//project').attrib['dir'] = dir
+        root.find('.//project/jmh_root').attrib['dir'] = "/home/" + self.data['username'] + "/tmp/project/benchmarks"
         if suite[0]: # if suite has elements 
-            root.find('.//project/versions/start').text = suite[0] # only do this if VersionDistributor or TestVersionDistributor
+            root.find('.//project/versions/start').text = suite[0]
             root.find('.//project/versions/end').text = suite[-1]
         config = './cloud-config-' + str(number) + '.xml'
         tree.write(config, encoding='utf-8', xml_declaration=True)
     
     def get_version_config(self, suite):
         
-        tree = ET.parse(self.data['config'])
+        tree = ET.parse(self.data['CL-params']['-f'])
         root = tree.getroot()
-        root.find('.//project/jmh_root').attrib['dir'] = '/home/selin/tmp/project/benchmarks'
+        root.find('.//project/jmh_root').attrib['dir'] = "/home/" + self.data['username'] + "/tmp/project/benchmarks"
         parent = root.find('.//project/versions')
         iterator = root.getiterator('version')
         if suite[0] and parent is not None:
@@ -126,7 +120,6 @@ class Writer(object):
             os.mkdir(expanduser('~/tmp/config'))
         except OSError:
             logging.info("Folder config exists.")
-            print 'Changing into folder ./config.'
         os.chdir(expanduser('~/tmp/config'))
         if ('-b','versions') in self.data['CL-params'].viewitems():
             self.get_version_config(suite)
@@ -144,31 +137,8 @@ class Writer(object):
     
     def generate_input(self, test_suite):
         
-        # TODO: maybe to check if test_suite != None, None
         config = self.get_multi_configs(test_suite[0])
         logging.info("Config-files generated.")
         param = self.get_parameters(test_suite[1])
         logging.info("Commandline parameters prepared.")
         return config, param
-
-if __name__ == "__main__" :
-    data = json.loads("""{
-                          "mode": "ip",
-                          "total": 3,
-                          "ip-list": {
-                            "instance-1": "130.211.94.53"
-                          },
-                          "CL-params": {
-                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/clopper/config.xml",
-                            "-o": "./output.csv",
-                            "-t": "benchmark",
-                            "-b": "versions",
-                            "--tests": "'\\\.runtime_deserialize_1_int_field$|\\\.runtime_serialize_1_int_field$|\\\.testFoo$|\\\.baseline$'"
-                          },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "distribution": "RandomDistributor",
-                          "status-mode": "ALL"
-                        }""")
-    writer = Writer(data, content='random')
-    test_data = writer.get_parameters([None], 1)

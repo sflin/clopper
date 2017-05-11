@@ -17,9 +17,9 @@ import os
 import clopper_pb2
 import clopper_pb2_grpc
 import commands
+from os.path import expanduser
 import shutil
 import glob
-from os.path import expanduser
 import threading
 
 _STATE = 'SLEEPING'
@@ -30,29 +30,30 @@ def prepare_execution():
     """Unpack project and get CL parametres for hopper execution."""
     
     try:
-        tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/project'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/project.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/project'))
         tar.close()
     except IOError:
-        shutil.rmtree(expanduser('~/tmp/project'))
-        tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/project'))
+        shutil.rmtree(expanduser('~/tmp-instance-2/project'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/project.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/project'))
     try:
-        tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/config'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/config.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/config'))
         tar.close()
     except IOError:
-        shutil.rmtree(expanduser('~/tmp/config'))
-        tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/config'))
+        shutil.rmtree(expanduser('~/tmp-instance-2/config'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/config.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/config'))
     try:
-        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/params'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/params.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/params'))
         tar.close()
     except IOError:
-        shutil.rmtree(expanduser('~/tmp/params'))
-        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/params'))
+        shutil.rmtree(expanduser('~/tmp-instance-2/params'))
+        tar = tarfile.open(expanduser('~/tmp-instance-2/params.tar.gz'))
+        tar.extractall(path=expanduser('~/tmp-instance-2/params'))
+    return
 
 def verification():
     """Check if hopper is running."""
@@ -63,10 +64,11 @@ def verification():
         return False
 
 def has_finished():
-    """Check for more work in params-directory."""
+    """Trigger file storing if output-directory has files
+        and check for more work."""
 
     global _EXECUTIONS
-    if len(glob.glob(expanduser('~/tmp/params/*'))) == _EXECUTIONS:
+    if len(glob.glob(expanduser('~/tmp-instance-2/params/*'))) == _EXECUTIONS:
         return True
     else:
         return False
@@ -75,17 +77,15 @@ def do_more_work():
     """Check if there is more work to do and call hopper to compute."""
     
     global _EXECUTIONS
-    if _EXECUTIONS < len(glob.glob(expanduser('~/tmp/params/*'))):
+    if _EXECUTIONS < len(glob.glob(expanduser('~/tmp-instance-2/params/*'))):
         _EXECUTIONS += 1
-        with open(expanduser("~/tmp/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
+        with open(expanduser("~/tmp-instance-2/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
             cl_params = f.read()
         args = "python ~/hopper/hopper.py " + cl_params
-        print args
         my_env = os.environ.copy()
         my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
-        with open(os.devnull, 'w') as fp:
-            subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
-            return True
+        #skip this section for testing purpose
+        return True
     else:
         return False
         
@@ -104,13 +104,11 @@ def execute_hopper():
             _STATE = 'FINISHED'
         elif do_more_work():
             _STATE = 'HOPPING'
+            time.sleep(15)
         else:
             _STATE = 'ERROR'
-            
 def clean_up():
-    shutil.rmtree(expanduser('~/tmp'))
-    os.mkdir(expanduser('~/tmp'))
-    subprocess.Popen('fuser -k 8080/tcp', shell=True)
+    subprocess.Popen('fuser -k 2222/tcp', shell=True)
     
 class Clopper(clopper_pb2_grpc.ClopperServicer):
         
@@ -144,7 +142,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     clopper_pb2_grpc.add_ClopperServicer_to_server(Clopper(), server)
-    server.add_insecure_port('localhost:8080') # instances are bound to port 8080
+    server.add_insecure_port('localhost:2222')
     server.start()
     try:
         while True:

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<historian type="MvnCommitWalker">
+        <project name="Protostuff" dir="/home/selin/Documents/Uni/Bachelorthesis/project/protostuff">
+                <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/project/benchmarks" />
+                <junit>
+                        <execs>1</execs>
+                </junit>
+                <versions>
+                        <start>8924a5f</start>
+                        <end>4a5af86</end>
+                </versions>
+        </project>
+        <jmh_arguments>
+                -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
+        </jmh_arguments>
+</historian>

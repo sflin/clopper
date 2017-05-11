@@ -5,7 +5,6 @@ Created on Thu Apr 27 14:36:33 2017
 
 @author: selin
 """
-import json
 from os.path import expanduser
 import os
 from MvnCommitWalker import MvnCommitWalker
@@ -30,7 +29,7 @@ def get_header(data):
                   'type':data['CL-params']['-t'], 'backend':'commits', 
                   'runner':'mvn', 'start':None, 'to': None, 'step':None, 
                   'invert':False, 'tests':None, 'mode':'commit-mode', 
-                  'codeonly':False, 'build-type':'clean', 'cloud':data['CL-params']['--cloud']}
+                  'codeonly':False, 'build-type':'clean', 'cloud':data['project-id']}
     
     mapping = {'backend':'-b', 'runner':'-r', 'start':'--from', 'to':'--to', 
                'step':'--step', 'invert':'-i', 'tests':'--tests', 
@@ -44,7 +43,7 @@ def get_header(data):
     return param_dict
 
 def concat(data, files):
-    """Concatenate files from storage bucket, sorted by version."""
+    """Concatenate files, sorted by version."""
     
     params = get_header(data)
     versions = get_versions(params)
@@ -59,24 +58,3 @@ def concat(data, files):
             with open(fname, 'r') as fin:
                 fin.next() # skip header
                 [outfile.write(line) for line in fin]            
-    
-if __name__ == "__main__" :
-    data = json.loads("""{
-                          "mode": "ip",
-                          "total": 3,
-                          "ip-list": {
-                            "instance-1": "130.211.94.53"
-                          },
-                          "CL-params": {
-                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/hopper/cloud-config-1.xml",
-                            "-o": "./output.csv",
-                            "-t": "benchmark",
-                            "-b": "commits",
-                            "--tests": "'\\\.runtime_deserialize_1_int_field$|\\\.runtime_serialize_1_int_field$|\\\.testFoo$|\\\.baseline$'"
-                          },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "distribution": "RandomDistributor",
-                          "status-mode": "ALL"
-                        }""")   
-    concat(data, ['/home/selin/Documents/instance-1-5fa34fc.csv', '/home/selin/Documents/leonore-89adsf.csv', '/home/selin/Documents/leonore-5fa34fc.csv'])

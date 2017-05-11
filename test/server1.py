@@ -17,9 +17,9 @@ import os
 import clopper_pb2
 import clopper_pb2_grpc
 import commands
+from os.path import expanduser
 import shutil
 import glob
-from os.path import expanduser
 import threading
 
 _STATE = 'SLEEPING'
@@ -53,18 +53,20 @@ def prepare_execution():
         shutil.rmtree(expanduser('~/tmp/params'))
         tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/params'))
+    return
 
 def verification():
     """Check if hopper is running."""
-
+    
     if commands.getstatusoutput("ps aux | grep -e hopper.py | grep -v grep")[1]:
         return True
     else:
         return False
 
 def has_finished():
-    """Check for more work in params-directory."""
-
+    """Trigger file storing if output-directory has files
+        and check for more work."""
+    
     global _EXECUTIONS
     if len(glob.glob(expanduser('~/tmp/params/*'))) == _EXECUTIONS:
         return True
@@ -106,11 +108,8 @@ def execute_hopper():
             _STATE = 'HOPPING'
         else:
             _STATE = 'ERROR'
-            
 def clean_up():
-    shutil.rmtree(expanduser('~/tmp'))
-    os.mkdir(expanduser('~/tmp'))
-    subprocess.Popen('fuser -k 8080/tcp', shell=True)
+    subprocess.Popen('fuser -k 2221/tcp', shell=True)
     
 class Clopper(clopper_pb2_grpc.ClopperServicer):
         
@@ -144,7 +143,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
     clopper_pb2_grpc.add_ClopperServicer_to_server(Clopper(), server)
-    server.add_insecure_port('localhost:8080') # instances are bound to port 8080
+    server.add_insecure_port('localhost:2221')
     server.start()
     try:
         while True:

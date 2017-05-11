@@ -15,6 +15,9 @@ export JAVA_HOME=$JAVA_HOME
 EOF
 source ~/.bashrc
 
+# install gcloud API
+pip install --upgrade google-cloud
+
 # install packages (git, pip, maven, gradle)
 sudo apt-get -y install python-pip
 sudo apt-get -y install git
@@ -42,11 +45,10 @@ sudo python -m pip install grpcio
 sudo python -m pip install grpcio-tools
 
 cd ~
-mkdir output
 mkdir tmp
 
 # get hopper
 git clone https://github.com/sealuzh/hopper.git
 
-# get clopper
+# get clopper server etc.
 # wget https://raw.githubusercontent.com/sflin/clopper/master/clopper_pb2.py?token=AOunWIehJcNN6rmF9Ekq3Lb10K18ixefks5Y8KFGwA%3D%3D -O clopper_pb2.py

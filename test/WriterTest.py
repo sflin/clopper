@@ -10,513 +10,539 @@ import tarfile
 import unittest
 import os
 import shutil
-from src.Distributor import (Distributor, VersionDistributor, 
-                                 TestDistributor, VersionTestDistributor, 
-                                 RandomVersionDistributor, RandomDistributor,
-                                 DefaultDistributor)
-import re
 from os.path import expanduser
 from src.Writer import Writer
 import xml.etree.ElementTree as ET
 
 class WriterTest(unittest.TestCase):
-    data = json.loads("""{
-                          "mode": "ip",
-                          "total": 1,
-                          "ip-list": {
-                            "instance-1": "130.211.94.53"
-                          },
-                          "CL-params": {
+    data = """{"CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                             "-o": "/home/selin/output/output.csv",
-                            "-t": "benchmark",
-                            "-b": "versions"
+                            "-t": "benchmark"
                           },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
-                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "distribution": "TestDistributor",
-                          "status-mode": "ALL"
-                        }""") 
-    
-    versions = ['8924a5f', 'a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
-                '5030820', '54af3bd', '8b83879', 'a0b38e6', '49ed34b', 
-                '4671f16', '1a2bc6b', '4c9bb60', '66fcce2', '7197210', 
-                'c07c69c', '3d28206', '9dbbb11', '55241d1', '96a6b52', 
-                '0104f8b', '584f8ff', 'ba4ba7b', '5f06c8a', '919551b', 
-                'd872285', 'd4f489e', 'a0a52c4', '015d763', '3942af5', 
-                '9ba2008', '115d6bb', '106d277', '98e1f4e', '4623a7d', 
-                '699d232', 'f26266f', 'fc5582d', 'f93d597', '18b4f1e', 
-                '4c2ec16']
-    
-    benchmarks = ['baseline', 
-                  'runtime_deserialize_1_int_field',
-                  'runtime_serialize_1_int_field',
-                  'runtime_deserialize_10_int_field',
-                  'runtime_serialize_10_int_fields',
-                  'runtime_sparse_deserialize_1_int_field',
-                  'testBar',
-                  'testBaz',
-                  'testFoo']
-    def test_configwriter_1inst(self):
+                "project-id":"bt-sfabel"
+                }"""
+    mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
+                   '--mode', '--skip-noncode','--build-type'] 
+    def test_eval_input(self):
+        data = json.loads(self.data)
+        writer = Writer(data, content = 'random')
+        answer = writer.eval_input()
+        self.assertTrue(answer)
+        writer = Writer(data, content = '')
+        answer = writer.eval_input()
+        self.assertFalse(answer)
         
-        self.data['total'] = 1
-        distributor = Distributor(self.data, strategy=VersionDistributor)
-        suite = distributor.get_suite()
-        writer = Writer(self.data, content=suite.content)
-        config, param = writer.generate_input(suite[0])
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('~/tmp/config.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/test-config'))
-        tar.close()
-        os.chdir(expanduser('~/tmp/test-config'))
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        config = os.listdir('.')[0]
+    def test_get_current_params_simple(self):
+        data = json.loads(self.data)
+        writer = Writer(data, content = '')
+        test_dict = writer.get_current_params()
+        self.assertEqual(test_dict['-t'], data['CL-params']['-t'])
+        self.assertEqual(test_dict['-o'], '~/tmp/out.csv')
+        self.assertEqual(test_dict['-f'], data['CL-params']['-f'])
+        self.assertEqual(test_dict['--cloud'], data['project-id'])
+        [self.assertNotIn(item, test_dict) for item in self.mapping]
         
-        tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
-        self.assertNotEqual(tree, testTree)
-        root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
+    def test_get_current_params_extended(self):
+        data = json.loads(self.data)
+        for item in self.mapping:
+            data['CL-params'][item] = 'foo'
+        writer = Writer(data, content = '')
+        test_dict = writer.get_current_params()
+        self.assertEqual(test_dict['-t'], data['CL-params']['-t'])
+        self.assertEqual(test_dict['-o'], '~/tmp/out.csv')
+        self.assertEqual(test_dict['-f'], data['CL-params']['-f'])
+        self.assertEqual(test_dict['--cloud'], data['project-id'])
+        [self.assertEqual(test_dict[item], 'foo') for item in self.mapping]
         
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
-        jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v1 = root.find('.//project/versions/start').text
-        v2 = root.find('.//project/versions/end').text
-        self.assertIn(v1, self.versions[0])
-        self.assertIn(v2, self.versions[-1])
-        os.chdir('..')
-        shutil.rmtree(expanduser('~/tmp/test-config'))
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/test-param'))
-        tar.close()
-        os.chdir(expanduser('~/tmp/test-param'))
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf = f.read()
-            #print buf
-        self.assertNotIn('--tests',buf)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
-    
-    def test_configwriter_5inst(self):
-        
-        self.data['total'] = 5
-        distributor = Distributor(self.data, strategy=VersionDistributor)
-        versions = distributor.get_suite()
-        writer = Writer(self.data, content=versions.content)
-        config, param = writer.generate_input(versions[0]) # generate config + param for first instance
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        config = os.listdir('.')[0]
-        tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
-        self.assertNotEqual(tree, testTree)
-        root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
-        jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v1 = root.find('.//project/versions/start').text
-        v2 = root.find('.//project/versions/end').text
-        self.assertIn(v1, [self.versions[0], self.versions[8], self.versions[16], 
-                           self.versions[24], self.versions[32]])
-        self.assertIn(v2, [self.versions[7], self.versions[15], self.versions[23],
-                           self.versions[31], self.versions[-1]])
-        os.chdir('..')
-        shutil.rmtree(expanduser('~/tmp/test-config'))
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
-        tar.extractall(path=expanduser('~/tmp/test-param'))
-        tar.close()
-        os.chdir('./test-param')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf = f.read()
-            #print buf
-        self.assertNotIn('--tests',buf)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
-        
-        
-    def test_random_configwriter_5inst(self):
-        
-        self.data['total'] = 5
-        distributor = Distributor(self.data, strategy=RandomVersionDistributor)
-        versions = distributor.get_suite()
-        writer = Writer(self.data, content=versions.content)
-        config, param = writer.generate_input(versions[0]) # generate config + param for first instance
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertIn(num_files, [8, 9])
-        #print os.listdir('.')
-        config = os.listdir('.')[0]
-        
-        tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
-        self.assertNotEqual(tree, testTree)
-        root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
-        jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v11 = root.find('.//project/versions/start').text
-        v12 = root.find('.//project/versions/end').text
-        self.assertEqual(v11, v12)
-        config = os.listdir('.')[1]
-        
-        tree = ET.parse(config)
-        root = tree.getroot()
-        v21 = root.find('.//project/versions/start').text
-        v22 = root.find('.//project/versions/end').text
-        self.assertEqual(v21, v22)
-        self.assertNotEqual(v11, v21)
-        self.assertNotEqual(v12, v22)
-        os.chdir('..')
-        shutil.rmtree('./test-config')
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('./params.tar.gz'))
-        tar.extractall(path=expanduser('./test-param'))
-        tar.close()
-        os.chdir('./test-param')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertIn(num_files, [8,9])
-        param = os.listdir('.')[0]
-        with open('cl-params-1.txt', 'r') as f:
-            buf = f.read()
-            #print buf
-        self.assertNotIn('--tests',buf)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
-        
-    # TestDistributor
-    def test_paramwriter(self):
-        self.data['total'] = 1
-        distributor = Distributor(self.data, strategy=TestDistributor)
-        suite = distributor.get_suite()
-        writer = Writer(self.data, content=suite.content)
-        config, param = writer.generate_input(suite[0])
-        
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        config = os.listdir('.')[0]
-        
-        tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
-        self.assertNotEqual(tree, testTree)
-        root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
-        jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v1 = root.find('.//project/versions/start').text
-        v2 = root.find('.//project/versions/end').text
-        self.assertIn(v1, self.versions[0])
-        self.assertIn(v2, self.versions[-1])
-        os.chdir('..')
-        shutil.rmtree('./test-config')
-        
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('./params.tar.gz'))
-        tar.extractall(path=expanduser('./test-param'))
-        tar.close()
-        os.chdir('./test-param')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf = f.read()
-            print buf
-        test_pattern = re.compile(".*--tests \'(\..*$|)*\..*$\'") # TODO: check regex
-        match = re.search(test_pattern, buf)
-        #print match.groups()
-        self.assertIn('--tests',buf)
-        #self.assertIsNotNone(match)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
+class ParamWriterTest(unittest.TestCase):
+    data = """{"CL-params": {
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                            "-o": "/home/selin/output/output.csv",
+                            "-t": "benchmark"
+                          },
+                "project-id":"bt-sfabel"}"""
 
-class RandomWriterTest(unittest.TestCase):
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            pass
+        
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp'))
+    def test_get_parameters(self):
+        data = json.loads(self.data)
+        writer = Writer(data, content = '')
+        suite = [None]
+        test_params = writer.get_parameters(suite)
+        self.assertEqual(test_params, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(test_params))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        param = os.listdir('.')[0]
+        self.assertEqual(param, 'cl-params-1.txt')
+        with open(param, 'r') as f:
+            buf = f.read()
+        self.assertNotIn('--tests', buf)
+        self.assertIn('-o ~/tmp/out.csv', buf)
+        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
+        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertNotEqual(data['CL-params']['-f'], '~/tmp/config/cloud-config-1.xml')
+        
+    def test_get_parameters2(self):
+        data = json.loads(self.data)
+        data['CL-params']['--tests'] = 'foo'
+        writer = Writer(data, content = '')
+        test_params = writer.get_parameters([None])
+        self.assertEqual(test_params, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(test_params))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        param = os.listdir('.')[0]
+        self.assertEqual(param, 'cl-params-1.txt')
+        with open(param, 'r') as f:
+            buf = f.read()
+        self.assertIn('--tests foo', buf)
+        self.assertIn('-o ~/tmp/out.csv', buf)
+        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
+        self.assertIn('--cloud bt-sfabel', buf)
+
+    def test_get_parameters3(self):
+        data = json.loads(self.data)
+        data['CL-params']['--tests'] = 'duck'
+        writer = Writer(data, content = '')
+        test_params = writer.get_parameters(['foo','bar','baz'])
+        self.assertEqual(test_params, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(test_params))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        param = os.listdir('.')[0]
+        self.assertEqual(param, 'cl-params-1.txt')
+        with open(param, 'r') as f:
+            buf = f.read()
+        self.assertIn("--tests '\.foo$|\.bar$|\.baz$'", buf)
+        self.assertIn('-o ~/tmp/out.csv', buf)
+        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
+        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertNotIn("--tests duck", buf)
+        
+    def test_get_parameters4(self):
+        data = json.loads(self.data)
+        writer = Writer(data, content = '')
+        test_params = writer.get_parameters(['foo','bar','baz'])
+        self.assertEqual(test_params, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(test_params))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        param = os.listdir('.')[0]
+        self.assertEqual(param, 'cl-params-1.txt')
+        with open(param, 'r') as f:
+            buf = f.read()
+        self.assertIn("--tests '\.foo$|\.bar$|\.baz$'", buf)
+        self.assertIn('-o ~/tmp/out.csv', buf)
+        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
+        self.assertIn('--cloud bt-sfabel', buf)
+    
+    def test_get_parameters5(self):
+        data = json.loads(self.data)
+        writer = Writer(data, content = '')
+        writer.num = 3
+        test_params = writer.get_parameters([None])
+        self.assertEqual(test_params, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(test_params))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        files = os.listdir('.')
+        self.assertItemsEqual(files, ['cl-params-1.txt','cl-params-2.txt','cl-params-3.txt'])
+         
+class MvnCommitsWriterTest(unittest.TestCase):
     data = json.loads("""{
-                          "mode": "ip",
-                          "total": 1,
-                          "ip-list": {
-                            "instance-1": "130.211.94.53"
-                          },
                           "CL-params": {
-                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                            "-o": "/home/selin/output/output.csv",
-                            "-t": "benchmark",
-                            "-b": "versions"
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml"
                           },
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "distribution": "TestDistributor",
-                          "status-mode": "ALL"
+                          "project-id":"bt-sfabel",
+                          "username":"selin"
                         }""") 
     
-    versions = ['8924a5f', 'a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
-                '5030820', '54af3bd', '8b83879', 'a0b38e6', '49ed34b', 
-                '4671f16', '1a2bc6b', '4c9bb60', '66fcce2', '7197210', 
-                'c07c69c', '3d28206', '9dbbb11', '55241d1', '96a6b52', 
-                '0104f8b', '584f8ff', 'ba4ba7b', '5f06c8a', '919551b', 
-                'd872285', 'd4f489e', 'a0a52c4', '015d763', '3942af5', 
-                '9ba2008', '115d6bb', '106d277', '98e1f4e', '4623a7d', 
-                '699d232', 'f26266f', 'fc5582d', 'f93d597', '18b4f1e', 
-                '4c2ec16']
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <historian type="MvnCommitWalker">
+            <project name="Protostuff" dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/protostuff">
+                    <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/benchmarks" />
+                    <junit>
+                            <execs>1</execs>
+                    </junit>
+                    <versions>
+                            <start>8924a5f</start>
+                            <end>4c2ec16</end>
+                    </versions>
+            </project>
+            <jmh_arguments>
+                    -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
+            </jmh_arguments>
+    </historian>"""
     
-    benchmarks = ['baseline', 
-                  'runtime_deserialize_1_int_field',
-                  'runtime_serialize_1_int_field',
-                  'runtime_deserialize_10_int_field',
-                  'runtime_serialize_10_int_fields',
-                  'runtime_sparse_deserialize_1_int_field',
-                  'testBar',
-                  'testBaz',
-                  'testFoo']
-    
-    # Version ranges, random tests
-    def test_version_testwriter(self): 
-        self.data['total'] = 2
-        distributor = Distributor(self.data, strategy=VersionTestDistributor)
-        suite = distributor.get_suite()
-        writer = Writer(self.data, content=suite.content)
-        config, param = writer.generate_input(suite[0])
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            pass
+        try:
+            os.mkdir(expanduser('~/tmp/config'))
+        except OSError:
+           pass
+        os.chdir(expanduser('~/tmp/config'))
+        with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
+            config.write(self.xml)
+        self.data['CL-params']['-f'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        self.data['config'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
         
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp'))
+    
+    def test_config(self):
+        writer = Writer(self.data, content='')
+        writer.get_config([None],1)
         num_files = len([name for name in os.listdir('.')])
         self.assertEquals(num_files, 1)
         config = os.listdir('.')[0]
-        
+        self.assertEqual(config, 'cloud-config-1.xml')
         tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
+        testTree = ET.parse(self.data['CL-params']['-f'])
         self.assertNotEqual(tree, testTree)
         root = tree.getroot()
-        # adapt start and end tag in config for each instance
         dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
+        self.assertEqual(expanduser(dir), '/home/selin/tmp/project/protostuff')
         jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
+        self.assertEqual(expanduser(jmh), '/home/selin/tmp/project/benchmarks')
         v1 = root.find('.//project/versions/start').text
         v2 = root.find('.//project/versions/end').text
-        self.assertIn(v1, [self.versions[0], self.versions[20]])
-        self.assertIn(v2, [self.versions[19], self.versions[-1]])
-        os.chdir('..')
-        shutil.rmtree('./test-config')
+        self.assertIn(v1, '8924a5f')
+        self.assertIn(v2, '4c2ec16')
+        self.assertEqual(self.data['CL-params']['-f'],"/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml")
         
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('./params.tar.gz'))
-        tar.extractall(path=expanduser('./test-param'))
-        tar.close()
-        os.chdir('./test-param')
+    def test_config2(self):
+        writer = Writer(self.data, content='')
+        writer.get_config(['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'],1)
         num_files = len([name for name in os.listdir('.')])
         self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf = f.read()
-        test_pattern = re.compile(".*--tests \'(\..*$|)*\..*$\'") # TODO: check regex
-        match = re.search(test_pattern, buf)
-        #print match.groups()
-        self.assertIn('--tests',buf)
-        #self.assertIsNotNone(match)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
-        
-    # random versions, random tests
-    def test_random_distributor_writer(self): 
-        self.data['total'] = 2
-        distributor = Distributor(self.data, strategy=RandomDistributor)
-        suite = distributor.get_suite()
-        writer = Writer(self.data, content=suite.content)
-        config, param = writer.generate_input(suite[0])
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertIn(num_files, [20,21])
         config = os.listdir('.')[0]
-        
+        self.assertEqual(config, 'cloud-config-1.xml')
         tree = ET.parse(config)
-        testTree = ET.parse(self.data['config'])
+        testTree = ET.parse(self.data['CL-params']['-f'])
         self.assertNotEqual(tree, testTree)
         root = tree.getroot()
-        # adapt start and end tag in config for each instance
         dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
+        self.assertEqual(expanduser(dir), '/home/selin/tmp/project/protostuff')
         jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v11 = root.find('.//project/versions/start').text
-        v12 = root.find('.//project/versions/end').text
-        self.assertEqual(v11, v12)
-        config = os.listdir('.')[1]
-        
-        tree = ET.parse(config)
-        root = tree.getroot()
-        v21 = root.find('.//project/versions/start').text
-        v22 = root.find('.//project/versions/end').text
-        self.assertEqual(v21, v22)
-        self.assertNotEqual(v11, v21)
-        self.assertNotEqual(v12, v22)
-        os.chdir('..')
-        shutil.rmtree('./test-config')
-        
-        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
-        tar = tarfile.open(expanduser('./params.tar.gz'))
-        tar.extractall(path=expanduser('./test-param'))
-        tar.close()
-        os.chdir('./test-param')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertIn(num_files, [20, 21])
-        with open('./cl-params-1.txt', 'r') as f:
-            buf = f.read()
-        test_pattern = re.compile(".*--tests \'(\..*$|)*\..*$\'") # TODO: check regex
-        match = re.search(test_pattern, buf)
-        #print match.groups()
-        self.assertIn('--tests',buf)
-        #self.assertIsNotNone(match)
-        self.assertIn('-o ~/output/out-1.csv', buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
-        
-    # whole version range (no randomization), all tests
-    def test_default(self):
-        self.data['total'] = 2
-        distributor = Distributor(self.data, strategy=DefaultDistributor)
-        suite = distributor.get_suite()
-        writer = Writer(self.data, content=suite.content)
-        config, param = writer.generate_input(suite[0])
-        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
-        tar.close()
-        os.chdir('./test-config')
-        num_files = len([name for name in os.listdir('.')])
-        self.assertEqual(num_files, 1)
-        tree = ET.parse(os.listdir('.')[0])
-        testTree = ET.parse(self.data['config'])
-        self.assertNotEqual(tree, testTree)
-        root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
-        jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
+        self.assertEqual(expanduser(jmh), '/home/selin/tmp/project/benchmarks')
         v1 = root.find('.//project/versions/start').text
         v2 = root.find('.//project/versions/end').text
-        self.assertEqual(v1, self.versions[0])
-        self.assertEqual(v2, self.versions[-1])
-        os.chdir('..')
-        shutil.rmtree('./test-config')
-        tar = tarfile.open(expanduser('./params.tar.gz'))
-        tar.extractall(path=expanduser('./test-param'))
-        tar.close()
-        os.chdir('./test-param')
+        self.assertIn(v1, 'a16e0bb')
+        self.assertIn(v2, '8b83879')
+        
+    def test_config3(self):
+        writer = Writer(self.data, content='')
+        writer.get_config([None],3)
         num_files = len([name for name in os.listdir('.')])
         self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf = f.read()
-            #print buf
-        self.assertNotIn('--tests',buf)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
+        config = os.listdir('.')[0]
+        self.assertEqual(config, 'cloud-config-3.xml')
         
-        config, param = writer.generate_input(suite[1])
+    def test_get_multi_configs(self):
+        writer = Writer(self.data, content='random')
+        config = writer.get_multi_configs(['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'])
         self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
-        tar = tarfile.open(expanduser('./config.tar.gz'))
-        tar.extractall(path=expanduser('./test-config'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
         tar.close()
-        os.chdir('./test-config')
+        os.chdir('./config')
         num_files = len([name for name in os.listdir('.')])
-        self.assertEqual(num_files, 1)
-        tree = ET.parse(os.listdir('.')[0])
-        testTree = ET.parse(self.data['config'])
+        self.assertEquals(num_files, 7)
+        
+    def test_get_multi_configs2(self):
+        writer = Writer(self.data, content='')
+        config = writer.get_multi_configs(['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        
+        
+class MvnVersionWriterTest(unittest.TestCase):
+    data = json.loads("""{
+                          "CL-params": {
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/version-test-conf.xml",
+                            "-b": "versions"
+                          },
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/version-test-conf.xml",
+                          "project-id":"bt-sfabel",
+                          "username":"selin"
+                        }""") 
+    
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <historian type="MvnVersionWalker">
+
+        <project name="Log4j2" group="org.apache.logging.log4j" module="log4j">
+                <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/project/benchmarks" />
+                <junit_root dir="/home/selin/Documents/Uni/Bachelorthesis/project/benchmarks" />
+                <versions>
+                        <version>2.0</version>
+                        <version>2.0.1</version>
+			<version>3.0</version>
+                        <version>5.0.1</version>
+			<version>6.0</version>
+                        <version>7.0.1</version>
+                </versions>
+        </project>
+        <jmh_arguments>
+            -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
+        </jmh_arguments>
+    </historian>"""
+    
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            pass
+        try:
+            os.mkdir(expanduser('~/tmp/config'))
+        except OSError:
+           pass
+        os.chdir(expanduser('~/tmp/config'))
+        with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
+            config.write(self.xml)
+        self.data['CL-params']['-f'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        self.data['config'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp'))
+        
+    def test_config(self):
+        writer = Writer(self.data, content='')
+        writer.get_version_config([None])
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        config = os.listdir('.')[0]
+        self.assertEqual(config, 'cloud-config-1.xml')
+        tree = ET.parse(config)
+        testTree = ET.parse(self.data['CL-params']['-f'])
         self.assertNotEqual(tree, testTree)
         root = tree.getroot()
-        # adapt start and end tag in config for each instance
-        dir = root.find('.//project').attrib['dir'] 
-        
-        self.assertEqual(expanduser(dir), expanduser('~/tmp/project/protostuff'))
         jmh = root.find('.//project/jmh_root').attrib['dir']
-        self.assertEqual(expanduser(jmh), expanduser('~/tmp/project/benchmarks'))
-        v3 = root.find('.//project/versions/start').text
-        v4 = root.find('.//project/versions/end').text
-        self.assertEqual(v3, self.versions[0])
-        self.assertEqual(v4, self.versions[-1])
-        self.assertEqual(v1, v3)
-        self.assertEqual(v2, v4)
-        os.chdir('..')
-        shutil.rmtree('./test-config')
-        tar = tarfile.open(expanduser('./params.tar.gz'))
+        self.assertEqual(jmh, '/home/selin/tmp/project/benchmarks')
+        versions = []
+        for item in root.iter():
+            if item.tag == 'version':
+                versions.append(item.text)
+        self.assertEquals(versions, ['2.0', '2.0.1','3.0', '5.0.1','6.0','7.0.1'])
+        
+    def test_config2(self):
+        writer = Writer(self.data, content='')
+        writer.get_version_config(['2.4', '3.4','5.0'])
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        config = os.listdir('.')[0]
+        self.assertEqual(config, 'cloud-config-1.xml')
+        tree = ET.parse(config)
+        testTree = ET.parse(self.data['CL-params']['-f'])
+        self.assertNotEqual(tree, testTree)
+        root = tree.getroot()
+        jmh = root.find('.//project/jmh_root').attrib['dir']
+        self.assertEqual(expanduser(jmh), '/home/selin/tmp/project/benchmarks')
+        versions = []
+        for item in root.iter():
+            if item.tag == 'version':
+                versions.append(item.text)
+        self.assertEquals(versions, ['2.4', '3.4','5.0'])    
+        
+    def test_get_multi_configs(self):
+        writer = Writer(self.data, content='')
+        config = writer.get_multi_configs([None])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        param = os.listdir('.')[0]
+        self.assertEqual(param, 'cloud-config-1.xml')
+        
+class WriterTestAll(unittest.TestCase):
+    data = json.loads("""{
+                          "CL-params": {
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                            "-o": "/home/selin/output/output.csv",
+                            "-t": "benchmark"
+                          },
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                          "project-id":"bt-sfabel",
+                          "username":"selin"
+                        }""") 
+    
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <historian type="MvnCommitWalker">
+            <project name="Protostuff" dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/protostuff">
+                    <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/benchmarks" />
+                    <junit>
+                            <execs>1</execs>
+                    </junit>
+                    <versions>
+                            <start>8924a5f</start>
+                            <end>4c2ec16</end>
+                    </versions>
+            </project>
+            <jmh_arguments>
+                    -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
+            </jmh_arguments>
+    </historian>"""
+    
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            pass
+        try:
+            os.mkdir(expanduser('~/tmp/config'))
+        except OSError:
+           pass
+        os.chdir(expanduser('~/tmp/config'))
+        with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
+            config.write(self.xml)
+        self.data['CL-params']['-f'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        self.data['config'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp')) 
+        
+    def test_generate_input(self):
+        writer = Writer(self.data, content='')
+        config, param = writer.generate_input([['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'],[None]])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
         tar.extractall(path=expanduser('./test-param'))
         tar.close()
         os.chdir('./test-param')
         num_files = len([name for name in os.listdir('.')])
         self.assertEquals(num_files, 1)
-        param = os.listdir('.')[0]
-        with open(param, 'r') as f:
-            buf2 = f.read()
-            #print buf2
-        self.assertNotIn('--tests',buf2)
-        self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf2)
-        self.assertEqual(buf, buf2)
-        os.chdir('..')
-        shutil.rmtree('./test-param')
+        self.assertEqual(os.listdir('.')[0], 'cl-params-1.txt')
+        
+    def test_generate_input2(self):
+        writer = Writer(self.data, content='random')
+        config, param = writer.generate_input([['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'],[None]])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 7)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 7)
+        
+    def test_generate_input3(self):
+        writer = Writer(self.data, content='')
+        config, param = writer.generate_input([[None],['foo','bar','baz']])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        self.assertEqual(os.listdir('.')[0], 'cl-params-1.txt')
+        
+    def test_generate_input4(self):
+        writer = Writer(self.data, content='')
+        config, param = writer.generate_input([['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'],['foo','bar','baz']])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 1)
+        self.assertEqual(os.listdir('.')[0], 'cl-params-1.txt')
+        
+    def test_generate_input5(self):
+        writer = Writer(self.data, content='random')
+        config, param = writer.generate_input([['a16e0bb', '5fa34fc', '01bc2b2', '4a5af86', 
+                '5030820', '54af3bd', '8b83879'],['foo','bar','baz']])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 7)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 7)
 
 if __name__ == '__main__':
-    try:
-        os.mkdir(expanduser('~/tmp'))
-    except OSError:
-        pass
     suite = unittest.TestLoader().loadTestsFromTestCase(WriterTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
-    suite = unittest.TestLoader().loadTestsFromTestCase(RandomWriterTest)
+    suite = unittest.TestLoader().loadTestsFromTestCase(ParamWriterTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
-    shutil.rmtree(expanduser('~/tmp'))
+    suite = unittest.TestLoader().loadTestsFromTestCase(MvnCommitsWriterTest)
+    unittest.TextTestRunner(verbosity=5).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(MvnVersionWriterTest)
+    unittest.TextTestRunner(verbosity=5).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(WriterTestAll)
+    unittest.TextTestRunner(verbosity=5).run(suite)

@@ -8,7 +8,6 @@ Created on Tue Apr 11 08:04:31 2017
 
 import unittest
 from src import parser as p
-
 class ParserTest (unittest.TestCase):
     
     benchmarks = ['baseline', 
