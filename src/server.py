@@ -16,7 +16,6 @@ import grpc
 import os
 import clopper_pb2
 import clopper_pb2_grpc
-import commands
 import shutil
 import glob
 from os.path import expanduser
@@ -54,14 +53,6 @@ def prepare_execution():
         tar = tarfile.open(expanduser('~/tmp/params.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/params'))
 
-def verification():
-    """Check if hopper is running."""
-
-    if commands.getstatusoutput("ps aux | grep -e hopper.py | grep -v grep")[1]:
-        return True
-    else:
-        return False
-
 def has_finished():
     """Check for more work in params-directory."""
 
@@ -72,40 +63,41 @@ def has_finished():
         return False
     
 def do_more_work():
-    """Check if there is more work to do and call hopper to compute."""
+    """Get command-line params and call hopper."""
     
     global _EXECUTIONS
-    if _EXECUTIONS < len(glob.glob(expanduser('~/tmp/params/*'))):
-        _EXECUTIONS += 1
-        with open(expanduser("~/tmp/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
-            cl_params = f.read()
-        args = "python ~/hopper/hopper.py " + cl_params
-        print args
-        my_env = os.environ.copy()
-        my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
-        with open(os.devnull, 'w') as fp:
-            subprocess.Popen(args, shell=True, env=my_env, stdout=fp)
-            return True
-    else:
-        return False
-        
+    _EXECUTIONS += 1
+    with open(expanduser("~/tmp/params/cl-params-"+ str(_EXECUTIONS) +".txt")) as f:
+        cl_params = f.read()
+    args = "python ~/hopper/hopper.py " + cl_params
+    my_env = os.environ.copy()
+    my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
+    proc = subprocess.Popen(args, shell=True, env=my_env, stdout=subprocess.PIPE)
+    return proc
+
 def execute_hopper():
-    """ while status is not FINISHED check for pid existing; 
-    HOPPER is running if pid exists,
-    if no pid, check if output can be written and has finished
-    if not: check for more work
-    else, status ERROR"""
+    """ Triggers hopper execution and monitors execution and more work to do."""
     
     global _STATE 
+    if has_finished():
+        _STATE = 'FINISHED'
+    else:
+        proc = do_more_work()
+        _STATE = 'HOPPING'
     while _STATE != 'FINISHED':
-        if verification():
+        if proc.poll() == None:
             _STATE = 'HOPPING'
-        elif has_finished():
-            _STATE = 'FINISHED'
-        elif do_more_work():
-            _STATE = 'HOPPING'
-        else:
+        elif proc.poll() == 1:
             _STATE = 'ERROR'
+            proc = do_more_work()
+        elif proc.poll() == 0:
+            if has_finished():
+                _STATE = 'FINISHED'
+            else:
+                proc = do_more_work()
+                _STATE = 'HOPPING'
+        else:
+            _STATE = 'UNKNOWN'
             
 def clean_up():
     shutil.rmtree(expanduser('~/tmp'))
@@ -135,7 +127,11 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
         clean_up()
      
     def ExecuteHopper(self, request, context):
-        prepare_execution()
+        try:
+            prepare_execution()
+        except:
+            self.status = 'ERROR'
+            return clopper_pb2.HopResults(status=self.status, name=self.instance_name)
         self.status = 'PREPARING'
         self.thread.start()
         return clopper_pb2.HopResults(status=self.status, name=self.instance_name)

@@ -5,11 +5,11 @@ Created on Thu Apr  6 14:25:23 2017
 
 @author: selin
 """
-import libcloud as lc
 import logging
 import subprocess
 from scp import SCPClient
 import paramiko
+import threading
 import time
 import sys
 import json
@@ -31,7 +31,7 @@ def clean_up(data):
     
     shutil.rmtree(expanduser('~/tmp'))
     shutil.rmtree(expanduser('~/output')) 
-    service = googleapiclient.discovery.build('storage', 'v1')
+    service = googleapiclient.discovery.build('storage', 'v1', cache_discovery=False)
     buckets = service.buckets().list(project=data['project-id']).execute()
     storage_client = storage.Client(project=data['project-id'])
     bucket = storage_client.get_bucket(buckets['items'][0]['name'])
@@ -45,7 +45,7 @@ def get_results(data):
         shutil.rmtree(expanduser('~/output'))
         os.mkdir(expanduser('~/output'))
         logging.warning("Replace output folder.")
-    service = googleapiclient.discovery.build('storage', 'v1')
+    service = googleapiclient.discovery.build('storage', 'v1', cache_discovery=False)
     buckets = service.buckets().list(project=data['project-id']).execute()
     storage_client = storage.Client(project=data['project-id'])
     bucket = storage_client.get_bucket(buckets['items'][0]['name'])
@@ -78,47 +78,44 @@ def distribute_test_suite(node_dict, test_suite, data):
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(hostname=ip, username=data['username'])
         with SCPClient(client.get_transport()) as scp:
+            #scp.put(expanduser('~/storage-credentials.json'), "/home/" + data['username'])
             scp.put(config, "/home/" + data['username'] + "/tmp/config.tar.gz")
             scp.put(cl, "/home/" + data['username'] + "/tmp/params.tar.gz")
             scp.put(project, "/home/" + data['username'] + "/tmp/project.tar.gz")
-        
-def create_nodes(data):
-    """Create and boot remote cloud instances. Replacable by other cloud-providers."""
+        client.close()
+            
+def set_up(node, data):
     
-    user_id = data['user-id']
-    key = data['key']
-    project = data['project-id']
-    global driver
-    
-    ComputeEngine = lc.get_driver(lc.DriverType.COMPUTE, lc.DriverType.COMPUTE.GCE)
-    driver = ComputeEngine(user_id, key, project=project)    
-    nodes = [driver.ex_get_node('instance-' + str(i)) for i in range(1, data['total']+1)]
-    [driver.ex_start_node(node) for node in nodes]
-    #nodes = driver.ex_create_multiple_nodes('instance-','n1-standard-2', image,
-                   #                         5, 'europe-west1-b', )
-    running_nodes = driver.wait_until_running(nodes)
-    node_dict={}
-    for node, ip in running_nodes:
-        node_dict[node.name] = ip[0]
-    return node_dict
-
-def get_instances(data):
-    mode = data['mode']
-    if mode == 'libcloud':
-        node_dict = create_nodes(data)
-    elif mode == 'ip':
-        node_dict = data['ip-list']
-    return node_dict
-    
+    user = data['username']
+    ip = node[1]
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(hostname=ip, username=user)
+    with SCPClient(client.get_transport()) as scp:
+        scp.put('cloud-configuration.sh', "/home/"+ user)
+        if 'json' in data: 
+            scp.put(data['json'], "/home/"+ user)
+    logging.info("Start installation on " + node[0])
+    (stdin, stdout, stderr) = client.exec_command('bash ~/cloud-configuration.sh')
+    exit_status = stdout.channel.recv_exit_status()
+    if exit_status == 0:
+        logging.info("Installation on " + node[0] + " completed.")
+    else:
+        logging.error("Installation failed on " + node[0])
+    with SCPClient(client.get_transport()) as scp:
+        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/selin/hopper/hopper.py")
+        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/selin/hopper/impl/FileDumper.py")
+    client.close()
+      
 def parse_json(param):
     """Parse json-config file and check for valid input."""
     
     with open(param) as data_file:
         data = json.load(data_file)
     
-    paras = ('mode', 'total', 'CL-params', 'project', 'distribution', 'project-id')
+    paras = ('total', 'CL-params', 'project', 'distribution', 'project-id')
     if not all(para in data for para in paras):
-        raise ValueError("Values required for: 'mode', 'total', 'CL-params'"+
+        raise ValueError("Values required for: 'total', 'CL-params'"+
                          "'project', 'distribution', and 'project-id'.")
     if not '-t' in data['CL-params']:
         raise ValueError("-t flag required in CL-params.")
@@ -126,12 +123,8 @@ def parse_json(param):
         raise ValueError("-f flag aka. config-file required in CL-params.")
     if not '-o' in data['CL-params']:
         raise ValueError("-o flag aka. output-file required in CL-params.")
-    if data['mode'] == 'libcloud' and not all(para in data for para in ('user-id', 'key')):
-        raise ValueError("libcloud-mode needs user-id, and key.")
-    elif data['mode'] =='ip' and 'ip-list' not in data:
+    if 'ip-list' not in data:
         raise ValueError("ip-mode needs ip-list")
-    elif data['mode'] not in ('libcloud', 'ip'):
-        raise ValueError("Mode not supported by clopper.")
     distri_modes = ('Distributor', 'TestDistributor', 'VersionDistributor', 
                          'VersionTestDistributor', 'RandomDistributor', 
                          'RandomVersionDistributor')
@@ -145,8 +138,8 @@ def parse_json(param):
         raise ValueError("Invalid flag -t: Clopper currently only supports benchmarks.")
     if data['CL-params']['-b'] not in ('commits', 'versions'):
         raise ValueError("Invalid flag -b: Hopper only supports commits or versions.")
-    if not 'username' in data:
-        data['username'] = os.environ.get('USER')
+    data['username'] = data['username'] if 'username' in data else os.environ.get('USER')
+    data['setup'] = data['setup'] if 'setup' in data else "False"
     logging.info("Json-file is valid.")
     return data
 
@@ -162,9 +155,14 @@ def run():
         shutil.rmtree(expanduser('~/tmp'))
         os.mkdir(expanduser('~/tmp'))
         logging.warning("Folder tmp replaced.")
-    
-    # get list of running instances, format: {instance-i : ip}
-    node_dict = get_instances(data)
+    # list of running instances, format: {instance-i : ip}
+    node_dict = data['ip-list']
+    # configure instances if required
+    if data['setup'] == "True":
+        threads = [threading.Thread(target=set_up, args=(node, data,)) for node in node_dict.iteritems()]
+        [t.start() for t in threads]
+        [thread.join() for thread in threads]
+        logging.info("Instances successfully configured.")
         
     # create and distribute test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
@@ -179,7 +177,7 @@ def run():
     logging.info("Splits distributed among instances.")
     
     # start gRPC-server on instances
-    start_grpc_server(node_dict)
+    start_grpc_server(node_dict, data)
     logging.info("Waiting for instances to start grpc server...")
     time.sleep(5)
     

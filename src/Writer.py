@@ -76,6 +76,7 @@ class Writer(object):
                 # TODO: adapt for unit-tests
                 if suite[0]: # if suite has elements, add --tests flag
                     tmp= "--tests '\."
+                    # if params['-t'] == 'benchmark': else add for unit-tests
                     for i in range(0, len(suite)-1): 
                         tmp += suite[i] + "$|\."
                     tmp += suite[-1] + "$'"

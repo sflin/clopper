@@ -1,7 +1,8 @@
 #! /bin/bash
-"""Start up script to configure cloud instances"""
+# Start up script to configure cloud instances
 sudo apt-get -y update && sudo apt-get -y upgrade
 export LC_ALL=C
+sudo apt-get -y install python-pip
 
 #install java JDK and set environment variable
 sudo apt-get -y install default-jdk
@@ -16,10 +17,16 @@ EOF
 source ~/.bashrc
 
 # install gcloud API
-pip install --upgrade google-cloud
+sudo pip install --upgrade google-cloud
+sudo pip install --upgrade google-api-python-client
 
-# install packages (git, pip, maven, gradle)
-sudo apt-get -y install python-pip
+# check for storage-credentials, if existing, set them
+# TODO: does not work yet
+FILE=~/storage-credentials.json    
+if [ -f $FILE ] ; then
+   echo "GOOGLE_APPLICATION_CREDENTIALS=$FILE" >> ~/.bashrc
+fi 
+# install packages (git, maven, gradle)
 sudo apt-get -y install git
 sudo apt-get -y install maven
 sudo apt-get -y install gradle
@@ -38,6 +45,8 @@ make
 sudo make install
 cd ..
 sudo pip install pygit2==0.25.0
+sudo ldconfig
+python -c 'import pygit2'
 sudo pip install untangle
 
 # install grpcio-tools
@@ -51,4 +60,6 @@ mkdir tmp
 git clone https://github.com/sealuzh/hopper.git
 
 # get clopper server etc.
-# wget https://raw.githubusercontent.com/sflin/clopper/master/clopper_pb2.py?token=AOunWIehJcNN6rmF9Ekq3Lb10K18ixefks5Y8KFGwA%3D%3D -O clopper_pb2.py
+wget https://raw.githubusercontent.com/sflin/clopper/master/src/server.py?token=AOunWHEIvve3bpO-Ny0yXyl-GPR8l6MHks5ZHb89wA%3D%3D -O server.py
+wget https://raw.githubusercontent.com/sflin/clopper/master/src/clopper_pb2.py?token=AOunWNqgcz25G_VcF6dZrMfJS_AlSrOlks5ZHb-AwA%3D%3D -O clopper_pb2.py
+wget https://raw.githubusercontent.com/sflin/clopper/master/src/clopper_pb2_grpc.py?token=AOunWNmnIFP2X82ZTwKPUvLjDtv54rfYks5ZHb-SwA%3D%3D -O clopper_pb2_grpc.py

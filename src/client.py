@@ -11,6 +11,7 @@ import threading
 import logging
 import clopper_pb2
 import clopper_pb2_grpc
+import sys
 
 def status_request(stub):
     #TODO: adapt request-time
@@ -21,15 +22,23 @@ def status_request(stub):
     return
  
 def initial_greeting(stubs):
-    
-    responses = [stub.SayHello(clopper_pb2.HelloRequest(request='')) for stub in stubs]
-    for r in responses:
-        logging.info(r.greeting)
+    connected = True
+    for stub in stubs:
+        try:
+            response = stub.SayHello(clopper_pb2.HelloRequest(request=''))
+        except grpc._channel._Rendezvous:
+            connected = False
+            logging.error(" Instance-" + str(stubs.index(stub) + 1) + " unavailable.")
+            continue
+        logging.info(response.greeting)
+    if not connected:
+        sys.exit("Connect failed: One or more instances not available." +
+                 " Please check connection.")
 
 def create_stubs(ports):
     channels = [grpc.insecure_channel('localhost:222'+ pn) for pn in ports] # listen to port 2221 to 222x
     stubs = [clopper_pb2_grpc.ClopperStub(c) for c in channels]
-    logging.info("Instances connected")
+    logging.info("Channel created.")
     return stubs
 
 def run(node_dict):
@@ -39,7 +48,10 @@ def run(node_dict):
     logging.info("Trigger hopper execution...")
     stati = [stub.ExecuteHopper(clopper_pb2.HopRequest(trigger='')) for stub in stubs]
     for s in stati:
-        logging.info(s.name + ' --- ' + s.status)
+        if s.status == 'ERROR':
+            logging.critical("ERROR on " + s.name + ". Hopper preparation failed.")
+        else:
+            logging.info(s.name + ' --- ' + s.status)
     threads = [threading.Thread(target = status_request, args = (stub,)) for stub in stubs]
     [t.start() for t in threads]
     [thread.join() for thread in threads]

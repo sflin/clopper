@@ -11,61 +11,45 @@ from os.path import expanduser
 import os
 import tarfile
 import shutil
-import subprocess
+import time
 
 class ServerTest(unittest.TestCase):
-    
-    CMD = ['python', '~/Documents/Uni/Bachelorthesis/hopper/hopper.py',
-           '-f', '~/Documents/Uni/Bachelorthesis/Testing/test-config.xml',
-           '-o', 'out.csv', '-t', 'benchmark', '-b', 'commits', '--cloud', 'bt-sfabel']
-    cl_params = "-t benchmark --cloud bt-sfabel -o ~/output/out-1.csv -f ~/tmp/config/cloud-config-1.xml -b versions --tests '\.runtime_deserialize_1_int_field$|\.runtime_serialize_1_int_field$|\.testFoo$|\.baseline$'"
+        
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/output'))
+        except OSError:
+            pass
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            shutil.rmtree(expanduser('~/tmp'))
+            os.mkdir(expanduser('~/tmp'))
+            
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp'))
         
     def test_has_finished_no_work_true(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            pass
-        try:
-            os.mkdir(expanduser('~/tmp/params'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp/params'))
-            os.mkdir(expanduser('~/tmp/params'))
+        os.mkdir(expanduser('~/tmp/params'))
         s._EXECUTIONS = 0
-        file_exists = s.has_finished()
-        self.assertTrue(file_exists)
+        has_finished = s.has_finished()
+        self.assertTrue(has_finished)
         
     def test_has_not_yet_finished(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            pass
-        try:
-            os.mkdir(expanduser('~/tmp/params'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp/params'))
-            os.mkdir(expanduser('~/tmp/params'))
-        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/output/out-1.csv'), expanduser('~/tmp/params'))
-        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/output/out-2.csv'), expanduser('~/tmp/params'))    
+        os.mkdir(expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-1.txt'), expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-2.txt'), expanduser('~/tmp/params'))    
         s._EXECUTIONS = 1
         has_finished = s.has_finished()
         files = os.listdir(expanduser('~/tmp/params'))
         self.assertFalse(has_finished)
         self.assertNotEqual(len(files), s._EXECUTIONS)
-        shutil.rmtree(expanduser('~/tmp'))
         s._EXECUTIONS = 0
         
     def test_has_truly_finished(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            pass
-        try:
-            os.mkdir(expanduser('~/tmp/params'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp/params'))
-            os.mkdir(expanduser('~/tmp/params'))
-        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/output/out-1.csv'), expanduser('~/tmp/params'))
-        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/output/out-2.csv'), expanduser('~/tmp/params'))    
+        os.mkdir(expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-1.txt'), expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-2.txt'), expanduser('~/tmp/params'))   
         s._EXECUTIONS = 2
         files = os.listdir(expanduser('~/tmp/params'))
         has_finished = s.has_finished()
@@ -77,34 +61,10 @@ class ServerTest(unittest.TestCase):
         s._EXECUTIONS = 0
         self.assertEqual(s._EXECUTIONS, 0)
         
-    def test_verification_false(self):
-        hopper_running = s.verification()
-        self.assertFalse(hopper_running)
-    
-    def test_verification_true(self):
-        
-        cmd = ''
-        for x in self.CMD:
-            cmd += ' ' + x
-        #subprocess.Popen(cmd, shell=True)
-        #hopper_running = s.verification()
-        hopper_running = True
-        self.assertTrue(hopper_running)
-        proc = subprocess.Popen(["pkill", "-f", "hopper.py"], stdout=subprocess.PIPE)
-        proc.wait()
-        
     def test_prepare_execution(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp'))
-            os.mkdir(expanduser('~/tmp'))
-        try:
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/project.tar.gz'), expanduser('~/tmp'))
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/config.tar.gz'), expanduser('~/tmp'))
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/params.tar.gz'), expanduser('~/tmp'))
-        except IOError:
-            print 'File copy error'
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/project.tar.gz'), expanduser('~/tmp'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/config.tar.gz'), expanduser('~/tmp'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/params.tar.gz'), expanduser('~/tmp'))
         files = os.listdir(expanduser('~/tmp'))
         self.assertNotIn('project', files)
         self.assertNotIn('params', files)
@@ -114,20 +74,11 @@ class ServerTest(unittest.TestCase):
         self.assertIn('project', files)
         self.assertIn('params', files)
         self.assertIn('config', files)
-        shutil.rmtree(expanduser('~/tmp'))
         
     def test_prepare_execution2(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp'))
-            os.mkdir(expanduser('~/tmp'))
-        try:
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/project.tar.gz'), expanduser('~/tmp'))
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/config.tar.gz'), expanduser('~/tmp'))
-            shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/params.tar.gz'), expanduser('~/tmp'))
-        except IOError:
-            print 'File copy error'
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/project.tar.gz'), expanduser('~/tmp'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/config.tar.gz'), expanduser('~/tmp'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/params.tar.gz'), expanduser('~/tmp'))
         tar = tarfile.open(expanduser('~/tmp/project.tar.gz'))
         tar.extractall(path=expanduser('~/tmp/project'))
         tar.close()
@@ -144,40 +95,52 @@ class ServerTest(unittest.TestCase):
         self.assertIn('params', files_post)
         self.assertIn('config', files_post)
         self.assertEquals(files_pre, files_post)
-        shutil.rmtree(expanduser('~/tmp'))
     
         
-    def test_do_more_work_fail(self):
-        working = s.do_more_work()
-        self.assertFalse(working)
+    def test_do_more_work_err(self):
+        os.mkdir(expanduser('~/tmp/params'))
+        os.mkdir(expanduser('~/tmp/config'))
+        s._EXECUTIONS = 1
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-2.txt'), expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cloud-config-2.xml'), expanduser('~/tmp/config'))
+        proc = s.do_more_work()
+        while proc.poll() == None:
+            time.sleep(1)
+        self.assertEquals(proc.poll(), 1)
+        s._EXECUTIONS = 0
         
     def test_do_more_work_success(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp'))
-            os.mkdir(expanduser('~/tmp'))
         os.mkdir(expanduser('~/tmp/params'))
-        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/cl-params-1.txt'), expanduser('~/tmp/params'))
-        #working = s.do_more_work()
-        working = True
-        proc = subprocess.Popen(["pkill", "-f", "hopper.py"], stdout=subprocess.PIPE)
-        proc.wait()
-        self.assertTrue(working)
-        shutil.rmtree(expanduser('~/tmp/params'))
-        shutil.rmtree(expanduser('~/tmp'))
-        s._EXECUTIONS = 0       
+        os.mkdir(expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cloud-config-1.xml'), expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-1.txt'), expanduser('~/tmp/params'))
+        proc = s.do_more_work()
+        self.assertIsNone(proc.poll())
+        while proc.poll() == None:
+            time.sleep(1)
+        self.assertEquals(proc.poll(), 0)
+        s._EXECUTIONS = 0    
         
     def test_execute_hopper_FINISHED(self):
-        try:
-            os.mkdir(expanduser('~/tmp'))
-        except OSError:
-            shutil.rmtree(expanduser('~/tmp'))
-            os.mkdir(expanduser('~/tmp'))
+        os.mkdir(expanduser('~/tmp/params'))
         self.assertEqual(s._STATE, 'SLEEPING')
         s.execute_hopper()
         self.assertEqual(s._STATE, 'FINISHED')
-        
+
+    def test_execute_hopper(self):
+        os.mkdir(expanduser('~/tmp/params'))
+        os.mkdir(expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cloud-config-1.xml'), expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-1.txt'), expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cloud-config-2.xml'), expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-2.txt'), expanduser('~/tmp/params'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cloud-config-3.xml'), expanduser('~/tmp/config'))
+        shutil.copy(expanduser('~/Documents/Uni/Bachelorthesis/Testing/server/cl-params-3.txt'), expanduser('~/tmp/params'))
+        self.assertEqual(s._STATE, 'SLEEPING')
+        s.execute_hopper()
+        self.assertEqual(s._STATE, 'FINISHED')      
+        s._EXECUTIONS = 0  
+        s._STATE = 'SLEEPING'
         
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(ServerTest)

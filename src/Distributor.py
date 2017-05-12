@@ -132,6 +132,7 @@ class TestDistributor(object):
         if data['CL-params'].has_key('--tests'):
             tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
             return tests
+        # TODO: extend for unit tests
         target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
         return target
     

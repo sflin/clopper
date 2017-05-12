@@ -43,7 +43,7 @@ class IntegrationTest(unittest.TestCase):
     def start_local(node_dict):
         for node in node_dict.iteritems():
             port = node[0].replace('instance-','')
-            # use testing version of server, only server1 is executing
+            # use testing version of server, only server1 is doing real hopping
             subprocess.Popen('python /home/selin/Documents/Uni/Bachelorthesis/clopper/test/server' + port +'.py', shell=True)
             
     def run_minimal(node_dict):
@@ -53,7 +53,10 @@ class IntegrationTest(unittest.TestCase):
         logging.info("Trigger hopper preparation...")
         stati = [stub.ExecuteHopper(src.clopper_pb2.HopRequest(trigger='')) for stub in stubs]
         for s in stati:
-            logging.info(s.name + ' --- ' + s.status)
+            if s.status == 'ERROR':
+                logging.critical("ERROR on " + s.name + ". Hopper preparation failed.")
+            else:
+                logging.info(s.name + ' --- ' + s.status)
         threads = [threading.Thread(target = src.client.status_request, args = (stub,)) for stub in stubs]
         [t.start() for t in threads]
         [thread.join() for thread in threads]
