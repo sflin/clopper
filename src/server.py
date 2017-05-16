@@ -72,7 +72,8 @@ def do_more_work():
     args = "python ~/hopper/hopper.py " + cl_params
     my_env = os.environ.copy()
     my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
-    proc = subprocess.Popen(args, shell=True, env=my_env, stdout=subprocess.PIPE)
+    fp = open(os.devnull, 'w')
+    proc = subprocess.Popen(args, shell=True, env=my_env, stdout=fp, close_fds=True)
     return proc
 
 def execute_hopper():
@@ -124,7 +125,7 @@ class Clopper(clopper_pb2_grpc.ClopperServicer):
             if self.status != _STATE or counter % int(request.request) == 0:
                 self.status = _STATE
                 yield clopper_pb2.InstanceUpdate(status = self.status, name = self.instance_name)
-            clean_up()
+        clean_up()
      
     def ExecuteHopper(self, request, context):
         try:

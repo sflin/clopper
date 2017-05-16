@@ -21,20 +21,58 @@ import shutil
 from Writer import Writer
 import OutputGenerator as og
 from google.cloud import storage
-import googleapiclient.discovery
 from Distributor import (Distributor, TestDistributor, VersionDistributor, 
                          VersionTestDistributor, RandomDistributor, 
                          RandomVersionDistributor)
-driver = None
+def parse_json(param):
+    """Parse json-config file and check for valid input."""
+    
+    with open(param) as data_file:
+        data = json.load(data_file)
+    
+    paras = ('total', 'CL-params', 'project', 'distribution', '-i')
+    if not all(para in data for para in paras):
+        raise ValueError("Values required for: 'total', 'CL-params'"+
+                         "'project', 'distribution', and -i aka. API-key-file.")
+    if not '-t' in data['CL-params']:
+        raise ValueError("-t flag required in CL-params.")
+    if not '-f' in data['CL-params']:
+        raise ValueError("-f flag aka. config-file required in CL-params.")
+    if not '-o' in data['CL-params']:
+        raise ValueError("-o flag aka. output-file required in CL-params.")
+    if not '--cloud' in data['CL-params']:
+        raise ValueError("--cloud flag required in CL-params. ")
+    if 'ip-list' not in data:
+        raise ValueError("Ip-list required.")
+    distri_modes = ('Distributor', 'TestDistributor', 'VersionDistributor', 
+                         'VersionTestDistributor', 'RandomDistributor', 
+                         'RandomVersionDistributor')
+    if data['distribution'] not in distri_modes:
+        raise ValueError("Invalid distribution mode.") 
+    args = data['CL-params']['--cloud'].split(' ')
+    data['bucket-name'], data['credentials'] = (args[0], args[1]) if '.json' in args[1] else (args[1], args[0])
+    if not os.path.exists(data['credentials']):
+        raise IOError("Credentials file does not exist.")
+    if not os.path.exists(data['CL-params']['-f']):
+        raise IOError("Config-file does not exist.")
+    if not os.path.exists(data['project']):
+        raise IOError("Project-folder does not exist.")
+    if data['CL-params']['-t'] not in ('benchmark', 'unit'):
+        raise ValueError("Invalid flag -t: Hopper only supports benchmarks or unit-tests.")
+    if data['CL-params']['-b'] not in ('commits', 'versions'):
+        raise ValueError("Invalid flag -b: Hopper only supports commits or versions.")
+    data['username'] = data['username'] if 'username' in data else os.environ.get('USER')
+    logging.info("Json-file is valid.")
+    return data
+
 def clean_up(data):
     """Clean up local host and bucket storage."""
     
     shutil.rmtree(expanduser('~/tmp'))
     shutil.rmtree(expanduser('~/output')) 
-    service = googleapiclient.discovery.build('storage', 'v1', cache_discovery=False)
-    buckets = service.buckets().list(project=data['project-id']).execute()
-    storage_client = storage.Client(project=data['project-id'])
-    bucket = storage_client.get_bucket(buckets['items'][0]['name'])
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(data['bucket-name'])
     bucket_files = bucket.list_blobs()
     bucket.delete_blobs(bucket_files)
 
@@ -45,10 +83,9 @@ def get_results(data):
         shutil.rmtree(expanduser('~/output'))
         os.mkdir(expanduser('~/output'))
         logging.warning("Replace output folder.")
-    service = googleapiclient.discovery.build('storage', 'v1', cache_discovery=False)
-    buckets = service.buckets().list(project=data['project-id']).execute()
-    storage_client = storage.Client(project=data['project-id'])
-    bucket = storage_client.get_bucket(buckets['items'][0]['name'])
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(data['bucket-name'])
     bucket_files = bucket.list_blobs()
     for bf in bucket_files:
         blob = bucket.blob(bf.name)
@@ -64,7 +101,8 @@ def start_grpc_server(node_dict, data):
         ip = node[1]
         user = data['username']
         key_file= data['-i']
-        cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L 222" + port + ":localhost:8080 " + user + "@" + ip + " python /home/" + user + "/server.py"
+        cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L 222" + port 
+        cmd+= ":localhost:8080 " + user + "@" + ip + " python /home/" + user + "/server.py"
         subprocess.Popen(cmd, shell=True)
 
 def distribute_test_suite(node_dict, test_suite, data):
@@ -81,9 +119,11 @@ def distribute_test_suite(node_dict, test_suite, data):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(hostname=ip, username=user, key_filename=key_file)
-        client.exec_command("rm -rf tmp")
-        client.exec_command("mkdir tmp")
         with SCPClient(client.get_transport()) as scp:
+            # TODO: remove
+            scp.put('/home/selin/Documents/Uni/Bachelorthesis/clopper/src/server.py', "/home/" + user)
+            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/"+ user + "/hopper/hopper.py")
+            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
             scp.put(config, "/home/" + user + "/tmp/config.tar.gz")
             scp.put(cl, "/home/" + user + "/tmp/params.tar.gz")
             scp.put(project, "/home/" + user + "/tmp/project.tar.gz")
@@ -99,61 +139,21 @@ def set_up(node, data):
     client.connect(hostname=ip, username=user, key_filename=key_file)
     with SCPClient(client.get_transport()) as scp:
         scp.put('cloud-configuration.sh', "/home/"+ user)
+        scp.put(data['credentials'], "/home/"+ user)
     logging.info("Start installation on " + node[0])
     (stdin, stdout, stderr) = client.exec_command('bash ~/cloud-configuration.sh')
+    counter = 0
     while not stdout.channel.exit_status_ready():
-        time.sleep(30)
-        logging.info("Installation in progress on " + node[0])
+        time.sleep(1)
+        counter += 1
+        if counter % 60 == 0:
+            logging.info("Installation in progress on " + node[0])
     exit_status = stdout.channel.recv_exit_status()
     if exit_status == 0:
         logging.info("Installation on " + node[0] + " completed.")
     else:
         logging.error("Installation failed on " + node[0])
-    # TODO: remove
-    with SCPClient(client.get_transport()) as scp:
-        scp.put("test.py", "/home/" + user)
-        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/"+ user + "/hopper/hopper.py")
-        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
-    (stdin, stdout, stderr) = client.exec_command("python test.py " + data['project-id'])
-    buf = stdout.readlines()
-    for line in buf:
-        print line
     client.close()
-      
-def parse_json(param):
-    """Parse json-config file and check for valid input."""
-    
-    with open(param) as data_file:
-        data = json.load(data_file)
-    
-    paras = ('total', 'CL-params', 'project', 'distribution', 'project-id', '-i')
-    if not all(para in data for para in paras):
-        raise ValueError("Values required for: 'total', 'CL-params'"+
-                         "'project', 'distribution', 'project-id', and -i.")
-    if not '-t' in data['CL-params']:
-        raise ValueError("-t flag required in CL-params.")
-    if not '-f' in data['CL-params']:
-        raise ValueError("-f flag aka. config-file required in CL-params.")
-    if not '-o' in data['CL-params']:
-        raise ValueError("-o flag aka. output-file required in CL-params.")
-    if 'ip-list' not in data:
-        raise ValueError("ip-mode needs ip-list")
-    distri_modes = ('Distributor', 'TestDistributor', 'VersionDistributor', 
-                         'VersionTestDistributor', 'RandomDistributor', 
-                         'RandomVersionDistributor')
-    if data['distribution'] not in distri_modes:
-        raise ValueError("Invalid distribution mode.")    
-    if not os.path.exists(data['CL-params']['-f']):
-        raise IOError("Config-file does not exist.")
-    if not os.path.exists(data['project']):
-        raise IOError("Project-folder does not exist.")
-    if data['CL-params']['-t'] not in ('benchmark'):
-        raise ValueError("Invalid flag -t: Clopper currently only supports benchmarks.")
-    if data['CL-params']['-b'] not in ('commits', 'versions'):
-        raise ValueError("Invalid flag -b: Hopper only supports commits or versions.")
-    data['username'] = data['username'] if 'username' in data else os.environ.get('USER')
-    logging.info("Json-file is valid.")
-    return data
 
 def run():
     logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
@@ -176,8 +176,6 @@ def run():
         [t.start() for t in threads]
         [thread.join() for thread in threads]
         logging.info("Instances successfully configured.")
-        if data['setup'] == 'authentication':
-            sys.exit("Please ssh into your instances and run 'gcloud auth application-default login'.")
         
     # create and distribute test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
@@ -206,9 +204,6 @@ def run():
     logging.info("Grabbing results...")
     get_results(data)
     logging.info("Shutting down instances and clean up local host...")
-    global driver
-    if driver:
-        [driver.ex_stop_node(node) for node in node_dict]
     clean_up(data)
     logging.info("Execution finished.")
     

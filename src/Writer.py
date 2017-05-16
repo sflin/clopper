@@ -46,8 +46,9 @@ class Writer(object):
     def get_current_params(self):
         
         cl_dict = self.data['CL-params']
-        param_dict = {'-f':cl_dict['-f'], '-o':'~/tmp/out.csv', '-t':cl_dict['-t'],
-                      '--cloud':self.data['project-id']}
+        cloud_flag = "~/" + cl_dict['--cloud'].split('/')[-1]
+        param_dict = {'-f':cl_dict['-f'], '-o':'~/out.csv', '-t':cl_dict['-t'],
+                      '--cloud': cloud_flag}
         mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
                    '--mode', '--skip-noncode','--build-type']
         
