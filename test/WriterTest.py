@@ -172,7 +172,8 @@ class ParamWriterTest(unittest.TestCase):
 class MvnCommitsWriterTest(unittest.TestCase):
     data = json.loads("""{
                           "CL-params": {
-                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml"
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                            "-t": "benchmark"
                           },
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
@@ -294,7 +295,8 @@ class MvnVersionWriterTest(unittest.TestCase):
     data = json.loads("""{
                           "CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/version-test-conf.xml",
-                            "-b": "versions"
+                            "-b": "versions",
+                            "-t": "benchmark"
                           },
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/version-test-conf.xml",
                           "project-id":"bt-sfabel",

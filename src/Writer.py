@@ -73,13 +73,17 @@ class Writer(object):
                         continue
                     else:
                         cl_file.write(p + ' ' + str(params[p]) + ' ')
-                # TODO: adapt for unit-tests
                 if suite[0]: # if suite has elements, add --tests flag
-                    tmp= "--tests '\."
-                    # if params['-t'] == 'benchmark': else add for unit-tests
-                    for i in range(0, len(suite)-1): 
-                        tmp += suite[i] + "$|\."
-                    tmp += suite[-1] + "$'"
+                    if params['-t'] == 'benchmark':
+                        tmp= "--tests '\."
+                        for i in range(0, len(suite)-1): 
+                            tmp += suite[i] + "$|\."
+                        tmp += suite[-1] + "$'"
+                    else:
+                        tmp= "--tests '"
+                        for i in range(0, len(suite)-1): 
+                            tmp += suite[i] + ","
+                        tmp += suite[-1] + "'"
                     cl_file.write(tmp)
         os.chdir('..')
         params = shutil.make_archive('params', 'gztar', root_dir=expanduser('~/tmp/params'))
@@ -87,7 +91,6 @@ class Writer(object):
         return params
     
     def get_config(self, suite, number):
-        # TODO: adapt for unit-tests
         tree = ET.parse(self.data['CL-params']['-f'])
         root = tree.getroot()
         dir = "/home/" + self.data['username'] + "/tmp/project/" + root.find('.//project').attrib['dir'].split('/')[-1]

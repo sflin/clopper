@@ -20,12 +20,6 @@ source ~/.bashrc
 sudo pip install --upgrade google-cloud
 sudo pip install --upgrade google-api-python-client
 
-# check for storage-credentials, if existing, set them
-# TODO: does not work yet
-FILE=~/storage-credentials.json    
-if [ -f $FILE ] ; then
-   echo "GOOGLE_APPLICATION_CREDENTIALS=$FILE" >> ~/.bashrc
-fi 
 # install packages (git, maven, gradle)
 sudo apt-get -y install git
 sudo apt-get -y install maven
@@ -63,3 +57,5 @@ git clone https://github.com/sealuzh/hopper.git
 wget https://raw.githubusercontent.com/sflin/clopper/master/src/server.py?token=AOunWHEIvve3bpO-Ny0yXyl-GPR8l6MHks5ZHb89wA%3D%3D -O server.py
 wget https://raw.githubusercontent.com/sflin/clopper/master/src/clopper_pb2.py?token=AOunWNqgcz25G_VcF6dZrMfJS_AlSrOlks5ZHb-AwA%3D%3D -O clopper_pb2.py
 wget https://raw.githubusercontent.com/sflin/clopper/master/src/clopper_pb2_grpc.py?token=AOunWNmnIFP2X82ZTwKPUvLjDtv54rfYks5ZHb-SwA%3D%3D -O clopper_pb2_grpc.py
+
+source ~/.bashrc

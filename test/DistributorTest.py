@@ -13,7 +13,7 @@ from src.Distributor import (Distributor, VersionDistributor,
 from src.TestSuite import TestSuite
 
 class TestSuiteTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": { },
+    data = json.loads("""{"CL-params": { "-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
@@ -66,7 +66,7 @@ class TestSuiteTest (unittest.TestCase):
         self.assertEquals(suite, self.expected)
     
 class VersionDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {},
+    data = json.loads("""{"CL-params": {"-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
@@ -189,7 +189,7 @@ class VersionDistributorTest (unittest.TestCase):
         
 
 class RandomVersionDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {},
+    data = json.loads("""{"CL-params": {"-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
@@ -313,7 +313,7 @@ class RandomVersionDistributorTest (unittest.TestCase):
         self.assertEquals(len(test_result), 50)
     
 class TestDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {}
+    data = json.loads("""{"CL-params": {"-t": "benchmark"}
                         }""")
     
     benchmarks = ['baseline', 
@@ -360,6 +360,23 @@ class TestDistributorTest (unittest.TestCase):
                                            [splits[3]],[splits[4]]])
         test_suite = tester.split(splits[:3], 5)
         self.assertItemsEqual(test_suite[:4], [[],[],[],[]])
+        
+    def test_get_target_unit(self):
+        self.data['CL-params']['--tests'] = "'runtime_sparse_deserialize_1_int_field,baseline,runtime_serialize_10_int_fields'"
+        self.data['CL-params']['-t'] = 'unit'
+        tester = TestDistributor()
+        tests = tester.get_target(self.data)
+        self.assertEquals(tests, ['runtime_sparse_deserialize_1_int_field','baseline','runtime_serialize_10_int_fields'] )
+        del self.data['CL-params']['--tests']
+        self.data['CL-params']['-t'] = 'benchmark'
+    
+    def test_get_target_unit2(self):
+        self.data['CL-params']['-t'] = 'unit'
+        self.data['project']="/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
+        tester = TestDistributor()
+        tests = tester.get_target(self.data)
+        self.assertEquals(tests,  ['testWriteNumericEnum','testSerializeDeserializeNumericEnum','testWriteStringEnum','testEmptyFieldsPojo','testComplexFieldsPojo'])
+        self.data['CL-params']['-t'] = 'benchmark'
         
     def test_get_suite_1inst(self):
         self.data['total'] = 1
@@ -425,7 +442,7 @@ class TestDistributorTest (unittest.TestCase):
         self.assertEquals(len(test_result), 11)
         
 class VersionTestDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {},
+    data = json.loads("""{"CL-params": {"-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
@@ -645,7 +662,7 @@ class VersionTestDistributorTest (unittest.TestCase):
         del self.data['CL-params']['--tests']
     
 class RandomDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {},
+    data = json.loads("""{"CL-params": {"-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
@@ -868,7 +885,7 @@ class RandomDistributorTest (unittest.TestCase):
     def test_with_dates(self):
         pass
 class MvnVersionDistributorTest (unittest.TestCase):
-    data = json.loads("""{"CL-params": {},
+    data = json.loads("""{"CL-params": {"-t": "benchmark"},
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     

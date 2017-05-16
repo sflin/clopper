@@ -58,4 +58,4 @@ def run(node_dict):
     logging.info("Shutting down cloud-manager-client...")
 
 if __name__ == '__main__':
-    run({'instance-1':'1','instance-2':'2'})
+    run({'instance-1':'1'})#,'instance-2':'2'})

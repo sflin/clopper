@@ -62,49 +62,62 @@ def start_grpc_server(node_dict, data):
     for node in node_dict.iteritems():
         port = node[0].replace('instance-', '')
         ip = node[1]
-        cmd = "ssh -o StrictHostKeyChecking=no -L 222" + port + ":localhost:8080 " + data['username'] + "@" + ip + " python ~/server.py"
+        user = data['username']
+        key_file= data['-i']
+        cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L 222" + port + ":localhost:8080 " + user + "@" + ip + " python /home/" + user + "/server.py"
         subprocess.Popen(cmd, shell=True)
 
 def distribute_test_suite(node_dict, test_suite, data):
     
     # compress project-dir
-    project = shutil.make_archive(expanduser('~/tmp/project'),'gztar',root_dir= data['project']) # store project as /project/"name"    
+    project = shutil.make_archive(expanduser('~/tmp/project'),'gztar',root_dir= data['project'])
     writer = Writer(data, test_suite.content)
     #distribute test suite among instances
     for node, bundle in zip(node_dict.iteritems(), test_suite):
         config, cl = writer.generate_input(bundle) 
         ip = node[1]
+        key_file = data['-i']
+        user = data['username']
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=ip, username=data['username'])
+        client.connect(hostname=ip, username=user, key_filename=key_file)
+        client.exec_command("rm -rf tmp")
+        client.exec_command("mkdir tmp")
         with SCPClient(client.get_transport()) as scp:
-            #scp.put(expanduser('~/storage-credentials.json'), "/home/" + data['username'])
-            scp.put(config, "/home/" + data['username'] + "/tmp/config.tar.gz")
-            scp.put(cl, "/home/" + data['username'] + "/tmp/params.tar.gz")
-            scp.put(project, "/home/" + data['username'] + "/tmp/project.tar.gz")
+            scp.put(config, "/home/" + user + "/tmp/config.tar.gz")
+            scp.put(cl, "/home/" + user + "/tmp/params.tar.gz")
+            scp.put(project, "/home/" + user + "/tmp/project.tar.gz")
         client.close()
             
 def set_up(node, data):
     
     user = data['username']
     ip = node[1]
+    key_file = data['-i']
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(hostname=ip, username=user)
+    client.connect(hostname=ip, username=user, key_filename=key_file)
     with SCPClient(client.get_transport()) as scp:
         scp.put('cloud-configuration.sh', "/home/"+ user)
-        if 'json' in data: 
-            scp.put(data['json'], "/home/"+ user)
     logging.info("Start installation on " + node[0])
     (stdin, stdout, stderr) = client.exec_command('bash ~/cloud-configuration.sh')
+    while not stdout.channel.exit_status_ready():
+        time.sleep(30)
+        logging.info("Installation in progress on " + node[0])
     exit_status = stdout.channel.recv_exit_status()
     if exit_status == 0:
         logging.info("Installation on " + node[0] + " completed.")
     else:
         logging.error("Installation failed on " + node[0])
+    # TODO: remove
     with SCPClient(client.get_transport()) as scp:
-        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/selin/hopper/hopper.py")
-        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/selin/hopper/impl/FileDumper.py")
+        scp.put("test.py", "/home/" + user)
+        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/"+ user + "/hopper/hopper.py")
+        scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
+    (stdin, stdout, stderr) = client.exec_command("python test.py " + data['project-id'])
+    buf = stdout.readlines()
+    for line in buf:
+        print line
     client.close()
       
 def parse_json(param):
@@ -113,10 +126,10 @@ def parse_json(param):
     with open(param) as data_file:
         data = json.load(data_file)
     
-    paras = ('total', 'CL-params', 'project', 'distribution', 'project-id')
+    paras = ('total', 'CL-params', 'project', 'distribution', 'project-id', '-i')
     if not all(para in data for para in paras):
         raise ValueError("Values required for: 'total', 'CL-params'"+
-                         "'project', 'distribution', and 'project-id'.")
+                         "'project', 'distribution', 'project-id', and -i.")
     if not '-t' in data['CL-params']:
         raise ValueError("-t flag required in CL-params.")
     if not '-f' in data['CL-params']:
@@ -139,7 +152,6 @@ def parse_json(param):
     if data['CL-params']['-b'] not in ('commits', 'versions'):
         raise ValueError("Invalid flag -b: Hopper only supports commits or versions.")
     data['username'] = data['username'] if 'username' in data else os.environ.get('USER')
-    data['setup'] = data['setup'] if 'setup' in data else "False"
     logging.info("Json-file is valid.")
     return data
 
@@ -155,14 +167,17 @@ def run():
         shutil.rmtree(expanduser('~/tmp'))
         os.mkdir(expanduser('~/tmp'))
         logging.warning("Folder tmp replaced.")
-    # list of running instances, format: {instance-i : ip}
-    node_dict = data['ip-list']
+    
+    node_dict = data['ip-list'] # format: {instance-i : ip}
+    
     # configure instances if required
-    if data['setup'] == "True":
+    if 'setup' in data:
         threads = [threading.Thread(target=set_up, args=(node, data,)) for node in node_dict.iteritems()]
         [t.start() for t in threads]
         [thread.join() for thread in threads]
         logging.info("Instances successfully configured.")
+        if data['setup'] == 'authentication':
+            sys.exit("Please ssh into your instances and run 'gcloud auth application-default login'.")
         
     # create and distribute test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
@@ -170,8 +185,10 @@ def run():
     logging.info("Test suite generated and splitted.")
     for x in reversed(range(0, len(test_suite))):
         if test_suite[x] == [[None],[None]]:
-            del node_dict['instance-'+str(x+1)]   
+            item = node_dict.keys()[x]
+            del node_dict[item]
             del test_suite[x]
+            logging.info("Testsuite too small for " + str(data['total']) + " instances. Release " + item)
             
     distribute_test_suite(node_dict, test_suite, data)
     logging.info("Splits distributed among instances.")

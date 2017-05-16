@@ -129,11 +129,13 @@ class TestDistributor(object):
             
     def get_target(self, data):
         
-        if data['CL-params'].has_key('--tests'):
-            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+        if '--tests' in data['CL-params']:
+            if data['CL-params']['-t']=='benchmark':
+                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            else:
+                tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
-        # TODO: extend for unit tests
-        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
+        target = parser.parse(data) 
         return target
     
     def split(self, target, total_inst):
@@ -178,10 +180,13 @@ class VersionTestDistributor(object):
     
     def get_tests(self, data):
         
-        if data['CL-params'].has_key('--tests'):
-            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+        if '--tests' in data['CL-params']:
+            if data['CL-params']['-t']=='benchmark':
+                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            else:
+                tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
-        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
+        target = parser.parse(data)
         return target
     
     def split(self, target, total_inst):
@@ -234,10 +239,13 @@ class RandomDistributor(object):
     
     def get_tests(self, data):
         
-        if data['CL-params'].has_key('--tests'):
-            tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+        if '--tests' in data['CL-params']:
+            if data['CL-params']['-t']=='benchmark':
+                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+            else:
+                tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
-        target = parser.parse(data['project']+'/benchmarks') # this must be the jmh root dir
+        target = parser.parse(data)
         return target
     
     def split(self, target, total_inst):

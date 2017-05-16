@@ -19,12 +19,25 @@ class ParserTest (unittest.TestCase):
                   'testBar',
                   'testBaz',
                   'testFoo']
-    
+    units = ['testWriteNumericEnum',
+             'testSerializeDeserializeNumericEnum',
+             'testWriteStringEnum',
+             'testEmptyFieldsPojo',
+             'testComplexFieldsPojo']
+             
+    data = {"project":"/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
+            "CL-params": {"-t": "benchmark"}
+            }
     def test_parse_result(self):
-        test_project = '/home/selin/Documents/Uni/Bachelorthesis/Testing/project/benchmarks'
-        test_result = p.parse(test_project)
+        test_result = p.parse(self.data)
         self.assertEqual(test_result, self.benchmarks)
         self.assertEqual(len(test_result), 9)
+        
+    def test_parse_unit(self):
+        self.data['CL-params']['-t'] = 'unit'
+        test_result = p.parse(self.data)
+        self.assertEqual(test_result, self.units)
+        self.assertEqual(len(test_result), 5)
         
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(ParserTest)
