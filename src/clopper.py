@@ -19,7 +19,7 @@ import glob
 from os.path import expanduser
 import shutil
 from Writer import Writer
-import OutputGenerator as og
+import outputgenerator as og
 from google.cloud import storage
 from Distributor import (Distributor, TestDistributor, VersionDistributor, 
                          VersionTestDistributor, RandomDistributor, 
@@ -68,8 +68,8 @@ def parse_json(param):
 def clean_up(data):
     """Clean up local host and bucket storage."""
     
-    shutil.rmtree(expanduser('~/tmp'))
-    shutil.rmtree(expanduser('~/output')) 
+    #shutil.rmtree(expanduser('~/tmp'))
+    #shutil.rmtree(expanduser('~/output')) 
     os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data['bucket-name'])
@@ -183,10 +183,10 @@ def run():
     logging.info("Test suite generated and splitted.")
     for x in reversed(range(0, len(test_suite))):
         if test_suite[x] == [[None],[None]]:
-            item = node_dict.keys()[x]
-            del node_dict[item]
+            node = node_dict.keys()[x]
+            del node_dict[node]
             del test_suite[x]
-            logging.info("Testsuite too small for " + str(data['total']) + " instances. Release " + item)
+            logging.info("Testsuite too small for " + str(data['total']) + " instances. Release " + node)
             
     distribute_test_suite(node_dict, test_suite, data)
     logging.info("Splits distributed among instances.")

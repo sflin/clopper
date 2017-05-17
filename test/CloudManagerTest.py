@@ -5,72 +5,11 @@ Created on Wed Apr 26 15:15:42 2017
 
 @author: selin
 """
-import src.CloudManager as cm
+import src.clopper as cm
 import unittest
 import json
 import os
-import mock
-
-class CloudManagerTestOne(unittest.TestCase):
-    data = """{
-                      "mode": "ip",
-                      "total": 3,
-                      "ip-list": {
-                        "instance-1": "35.187.117.113",
-                        "instance-2": "104.199.99.133",
-                        "instance-3": "35.187.174.32"
-                      },
-                      "CL-params": {
-                        "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                        "-o": "./output.csv",
-                        "-t": "benchmark",
-                        "-b": "commits"
-                      },
-                      "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-                      "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                      "distribution": "VersionDistributor"
-                      }"""
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-    <historian type="MvnCommitWalker">
-            <project name="Protostuff" dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/protostuff">
-                    <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/benchmarks" />
-                    <junit>
-                            <execs>1</execs>
-                    </junit>
-                    <versions>
-                            <start>8924a5f</start>
-                            <end>01bc2b2</end>
-                    </versions>
-            </project>
-            <jmh_arguments>
-                    -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
-            </jmh_arguments>
-    </historian>"""
-    
-    def setUp(self):
-        self.data = json.loads(self.data)
-        with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
-            config.write(self.xml)
-        self.data['CL-params']['-f'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
-        self.data['config'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
-        self.data['CL-params']['-b'] = "commits"
         
-    def test_get_instances_ip(self):
-        nodes = cm.get_instances(self.data)
-        self.assertEqual(nodes, self.data['ip-list'])
-        
-    def simple_boot(data):
-        node_dict = {"instance-1": "35.187.117.113","instance-2": "104.199.99.133", "instance-3": "35.187.174.32"}
-        return node_dict
-        
-    @mock.patch('src.CloudManager.boot_nodes', side_effect=simple_boot)
-    def test_get_instances_libcloud(self, node_create):
-        self.data['mode'] = 'libcloud'
-        self.data['user-id'] = u'123'
-        self.data['key'] = 'abc'
-        self.data['gce-project'] = 'project'
-        nodes = cm.get_instances(self.data)
-        self.assertEqual(nodes, self.data['ip-list'])
      
 class CloudManagerTestTwo(unittest.TestCase):
     data = """{
@@ -86,14 +25,16 @@ class CloudManagerTestTwo(unittest.TestCase):
                         "-o": "./output.csv",
                         "-t": "benchmark",
                         "-b": "commits",
-                        "--cloud":"True"
+                         "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                       },
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "project-id":"bt-sfabel",
+                      "-i":"/home/selin/api-key",
                       "username":"selin",
-                      "setup":"False"
+                      "setup":"False",
+                      "bucket-name":"clopper-storage",
+                      "credentials":"/home/selin/storage-credentials.json"
                       }"""
     
     def test_parse_json(self):
@@ -103,19 +44,6 @@ class CloudManagerTestTwo(unittest.TestCase):
             conf.write(json.dumps(data))      
         test_data = cm.parse_json(config)
         self.assertEqual(data, test_data)
-        
-    """def test_libcloud_mode(self):
-        data = json.loads(self.data)
-        del data['ip-list']
-        data['mode'] = 'libcloud'
-        data['user-id'] = u'123'
-        data['key'] = 'abc'
-        data['gce-project'] = 'project'
-        config = "./test-config.json"
-        with open(config, 'w') as conf:
-            conf.write(json.dumps(data))      
-        test_data = cm.parse_json(config)
-        self.assertEqual(data, test_data)"""
         
 class CloudManagerTestThree(unittest.TestCase):
     data = """{
@@ -130,12 +58,13 @@ class CloudManagerTestThree(unittest.TestCase):
                         "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                         "-o": "./output.csv",
                         "-t": "benchmark",
-                        "-b": "commits"
+                        "-b": "commits",
+                        "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                       },
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "project-id":"bt-sfabel"
+                      "-i":"api-file"
                       }"""
                       
         
@@ -148,19 +77,45 @@ class CloudManagerTestThree(unittest.TestCase):
         self.assertNotEqual(data, test_data)
         self.assertIn('username', test_data)
         self.assertEquals(test_data['username'], 'selin')
-        
-    """def test_no_mode(self):
+    
+    def test_cloud_splitted(self):
         data = json.loads(self.data)
-        del data['mode']
+        config = "./test-config.json"
+        with open(config, 'w') as conf:
+            conf.write(json.dumps(data))  
+        test_data = cm.parse_json(config)
+        self.assertNotIn('credentials', data)
+        self.assertNotIn('bucket-name', data)
+        self.assertIn('credentials', test_data)
+        self.assertEquals(test_data['credentials'], "/home/selin/storage-credentials.json")
+        self.assertIn('bucket-name', test_data)
+        self.assertEquals(test_data['bucket-name'], 'clopper-storage')
+        
+    def test_cloud_splitted2(self):
+        data = json.loads(self.data)
+        data['CL-params']['--cloud']="clopper-storage /home/selin/storage-credentials.json"
+        config = "./test-config.json"
+        with open(config, 'w') as conf:
+            conf.write(json.dumps(data))  
+        test_data = cm.parse_json(config)
+        self.assertNotIn('credentials', data)
+        self.assertNotIn('bucket-name', data)
+        self.assertIn('credentials', test_data)
+        self.assertEquals(test_data['credentials'], "/home/selin/storage-credentials.json")
+        self.assertIn('bucket-name', test_data)
+        self.assertEquals(test_data['bucket-name'], 'clopper-storage')            
+    def test_no_total(self):
+        data = json.loads(self.data)
+        del data['total']
         config = "./test-config.json"
         with open(config, 'w') as conf:
             conf.write(json.dumps(data))      
         with self.assertRaises(ValueError):
-            cm.parse_json(config)"""
+            cm.parse_json(config)
             
-    def test_no_total(self):
+    def test_no_key_file(self):
         data = json.loads(self.data)
-        del data['total']
+        del data['-i']
         config = "./test-config.json"
         with open(config, 'w') as conf:
             conf.write(json.dumps(data))      
@@ -221,37 +176,6 @@ class CloudManagerTestThree(unittest.TestCase):
         with self.assertRaises(ValueError):
             cm.parse_json(config)
             
-    """def test_libcloud_mode_fail(self):
-        data = json.loads(self.data)
-        data['mode'] = 'libcloud'
-        config = "./test-config.json"
-        with open(config, 'w') as conf:
-            conf.write(json.dumps(data))      
-        with self.assertRaises(ValueError):
-            cm.parse_json(config)
-
-    def test_libcloud_mode_fail2(self):
-        data = json.loads(self.data)
-        data['mode'] = 'libcloud'
-        data['user-id'] = '123'
-        data['gce-project'] = 'project'
-        config = "./test-config.json"
-        with open(config, 'w') as conf:
-            conf.write(json.dumps(data))      
-        with self.assertRaises(ValueError):
-            cm.parse_json(config)
-            
-    def test_libcloud_mode_fail3(self):
-        data = json.loads(self.data)
-        data['mode'] = 'libcloud'
-        data['key'] = 'abc'
-        data['gce-project'] = 'project'
-        config = "./test-config.json"
-        with open(config, 'w') as conf:
-            conf.write(json.dumps(data))      
-        with self.assertRaises(ValueError):
-            cm.parse_json(config)"""
-            
 class CloudManagerTestFour(unittest.TestCase):
     data = """{
                       "mode": "ip",
@@ -265,22 +189,15 @@ class CloudManagerTestFour(unittest.TestCase):
                         "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                         "-o": "./output.csv",
                         "-t": "benchmark",
-                        "-b": "commits"
+                        "-b": "commits",
+                        "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                       },
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "project-id":"bt-sfabel"
+                      "-i":"key-file"
                       }"""
                       
-    def test_no_project_id(self):
-        data = json.loads(self.data)
-        del data['project-id']
-        config = "./test-config.json"
-        with open(config, 'w') as conf:
-            conf.write(json.dumps(data))  
-        with self.assertRaises(ValueError):
-            cm.parse_json(config)
         
     def test_invalid_distribution(self):
         data = json.loads(self.data)
@@ -326,19 +243,18 @@ class CloudManagerTestFour(unittest.TestCase):
             conf.write(json.dumps(data))      
         with self.assertRaises(ValueError):
             cm.parse_json(config)
-
-    """def test_invalid_mode(self):
+    
+    def test_invalid_creds(self):
         data = json.loads(self.data)
-        data['mode'] = 'foo'
+        data['CL-params']['--cloud'] = 'foo.json clopper-storage'
         config = "./test-config.json"
         with open(config, 'w') as conf:
             conf.write(json.dumps(data))      
-        with self.assertRaises(ValueError):
-            cm.parse_json(config)  """ 
-            
+        with self.assertRaises(IOError):
+            cm.parse_json(config)
+        
+
 if __name__ == '__main__':
-    #suite = unittest.TestLoader().loadTestsFromTestCase(CloudManagerTestOne)
-    #unittest.TextTestRunner(verbosity=5).run(suite)
     suite = unittest.TestLoader().loadTestsFromTestCase(CloudManagerTestTwo)
     unittest.TextTestRunner(verbosity=5).run(suite)
     suite = unittest.TestLoader().loadTestsFromTestCase(CloudManagerTestThree)

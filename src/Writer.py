@@ -46,8 +46,8 @@ class Writer(object):
     def get_current_params(self):
         
         cl_dict = self.data['CL-params']
-        cloud_flag = "~/" + cl_dict['--cloud'].split('/')[-1]
-        param_dict = {'-f':cl_dict['-f'], '-o':'~/out.csv', '-t':cl_dict['-t'],
+        cloud_flag = "~/" + self.data['credentials'].split('/')[-1] + " " + self.data['bucket-name']
+        param_dict = {'-f':cl_dict['-f'], '-o':'~/tmp/out.csv', '-t':cl_dict['-t'],
                       '--cloud': cloud_flag}
         mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
                    '--mode', '--skip-noncode','--build-type']
@@ -76,9 +76,9 @@ class Writer(object):
                         cl_file.write(p + ' ' + str(params[p]) + ' ')
                 if suite[0]: # if suite has elements, add --tests flag
                     if params['-t'] == 'benchmark':
-                        tmp= "--tests '\."
+                        tmp= "--tests '.*\."
                         for i in range(0, len(suite)-1): 
-                            tmp += suite[i] + "$|\."
+                            tmp += suite[i] + "$|.*\."
                         tmp += suite[-1] + "$'"
                     else:
                         tmp= "--tests '"

@@ -73,8 +73,9 @@ def do_more_work():
     my_env = os.environ.copy()
     my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
     #replace real process for testing purpose; server1 will execute same work
-    proc = subprocess.Popen('ls -l', shell=True, stdout= subprocess.PIPE)
-    #proc = subprocess.Popen(args, shell=True, env=my_env, stdout=subprocess.PIPE)
+    fp = open(os.devnull, 'w')
+    proc = subprocess.Popen("ls -l", shell=True, env=my_env, stdout=fp, close_fds=True)
+    #proc = subprocess.Popen(args, shell=True, env=my_env, stdout=fp, close_fds=True)
     return proc
 
 def execute_hopper():

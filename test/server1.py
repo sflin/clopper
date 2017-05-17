@@ -70,7 +70,8 @@ def do_more_work():
     args = "python ~/hopper/hopper.py " + cl_params
     my_env = os.environ.copy()
     my_env['JAVA_HOME'] = "/usr/lib/jvm/java-8-openjdk-amd64"
-    proc = subprocess.Popen(args, shell=True, env=my_env, stdout=subprocess.PIPE)
+    fp = open(os.devnull, 'w')
+    proc = subprocess.Popen(args, shell=True, env=my_env, stdout=fp, close_fds=True)
     return proc
 
 def execute_hopper():

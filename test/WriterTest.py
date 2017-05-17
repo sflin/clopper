@@ -18,9 +18,11 @@ class WriterTest(unittest.TestCase):
     data = """{"CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                             "-o": "/home/selin/output/output.csv",
-                            "-t": "benchmark"
+                            "-t": "benchmark",
+                            "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
-                "project-id":"bt-sfabel"
+                "credentials": "/home/selin/storage-credentials.json",
+                "bucket-name": "clopper-storage"
                 }"""
     mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
                    '--mode', '--skip-noncode','--build-type'] 
@@ -40,7 +42,7 @@ class WriterTest(unittest.TestCase):
         self.assertEqual(test_dict['-t'], data['CL-params']['-t'])
         self.assertEqual(test_dict['-o'], '~/tmp/out.csv')
         self.assertEqual(test_dict['-f'], data['CL-params']['-f'])
-        self.assertEqual(test_dict['--cloud'], data['project-id'])
+        self.assertEqual(test_dict['--cloud'], "~/storage-credentials.json clopper-storage")
         [self.assertNotIn(item, test_dict) for item in self.mapping]
         
     def test_get_current_params_extended(self):
@@ -52,16 +54,18 @@ class WriterTest(unittest.TestCase):
         self.assertEqual(test_dict['-t'], data['CL-params']['-t'])
         self.assertEqual(test_dict['-o'], '~/tmp/out.csv')
         self.assertEqual(test_dict['-f'], data['CL-params']['-f'])
-        self.assertEqual(test_dict['--cloud'], data['project-id'])
         [self.assertEqual(test_dict[item], 'foo') for item in self.mapping]
         
 class ParamWriterTest(unittest.TestCase):
     data = """{"CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                             "-o": "/home/selin/output/output.csv",
-                            "-t": "benchmark"
+                            "-t": "benchmark",
+                            "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
-                "project-id":"bt-sfabel"}"""
+                "credentials": "/home/selin/storage-credentials.json",
+                "bucket-name": "clopper-storage"
+                }"""
 
     def setUp(self):
         try:
@@ -90,7 +94,7 @@ class ParamWriterTest(unittest.TestCase):
         self.assertNotIn('--tests', buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
         self.assertNotEqual(data['CL-params']['-f'], '~/tmp/config/cloud-config-1.xml')
         
     def test_get_parameters2(self):
@@ -112,7 +116,7 @@ class ParamWriterTest(unittest.TestCase):
         self.assertIn('--tests foo', buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
 
     def test_get_parameters3(self):
         data = json.loads(self.data)
@@ -130,10 +134,10 @@ class ParamWriterTest(unittest.TestCase):
         self.assertEqual(param, 'cl-params-1.txt')
         with open(param, 'r') as f:
             buf = f.read()
-        self.assertIn("--tests '\.foo$|\.bar$|\.baz$'", buf)
+        self.assertIn("--tests '.*\.foo$|.*\.bar$|.*\.baz$'", buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
         self.assertNotIn("--tests duck", buf)
         
     def test_get_parameters4(self):
@@ -151,10 +155,10 @@ class ParamWriterTest(unittest.TestCase):
         self.assertEqual(param, 'cl-params-1.txt')
         with open(param, 'r') as f:
             buf = f.read()
-        self.assertIn("--tests '\.foo$|\.bar$|\.baz$'", buf)
+        self.assertIn("--tests '.*\.foo$|.*\.bar$|.*\.baz$'", buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
-        self.assertIn('--cloud bt-sfabel', buf)
+        self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
     
     def test_get_parameters5(self):
         data = json.loads(self.data)
@@ -173,12 +177,14 @@ class MvnCommitsWriterTest(unittest.TestCase):
     data = json.loads("""{
                           "CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                            "-t": "benchmark"
+                            "-t": "benchmark",
+                            "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
-                          "project-id":"bt-sfabel",
-                          "username":"selin"
+                          "username":"selin",
+                            "credentials": "/home/selin/storage-credentials.json",
+                            "bucket-name": "clopper-storage"
                         }""") 
     
     xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -402,6 +408,8 @@ class WriterTestAll(unittest.TestCase):
                           "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                           "project-id":"bt-sfabel",
+                            "credentials": "/home/selin/storage-credentials.json",
+                            "bucket-name": "clopper-storage",
                           "username":"selin"
                         }""") 
     

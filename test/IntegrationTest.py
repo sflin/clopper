@@ -6,7 +6,7 @@ Created on Thu May 11 01:24:56 2017
 @author: selin
 """
 
-import src.CloudManager as cm
+import src.clopper as cm
 import unittest
 import os
 import subprocess
@@ -40,7 +40,7 @@ class IntegrationTest(unittest.TestCase):
             shutil.copyfile(cl, expanduser('~/tmp-' + name + '/params.tar.gz'))
             shutil.copyfile(project, expanduser('~/tmp-' + name + '/project.tar.gz'))
             
-    def start_local(node_dict):
+    def start_local(node_dict, data):
         for node in node_dict.iteritems():
             port = node[0].replace('instance-','')
             # use testing version of server, only server1 is doing real hopping

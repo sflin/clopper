@@ -1,11 +1,18 @@
 #! /bin/bash
 # Start up script to configure cloud instances
-sudo apt-get -y update && sudo apt-get -y upgrade
 export LC_ALL=C
+# work-around needed for EC2-instances
+if [ -f /sys/hypervisor/uuid ] && [ `head -c 3 /sys/hypervisor/uuid` == ec2 ]; then
+    sudo rm /boot/grub/menu.lst
+    sudo update-grub-legacy-ec2 -y
+    sudo apt-get dist-upgrade -qq --force-yes
+fi
+
+sudo apt-get update && sudo apt-get -y upgrade
 sudo apt-get -y install python-pip
 
 #install java JDK and set environment variable
-sudo apt-get -y install default-jdk
+sudo apt-get -y install openjdk-8-jdk
 
 # set environment variable!
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
@@ -18,7 +25,6 @@ source ~/.bashrc
 
 # install gcloud API
 sudo pip install --upgrade google-cloud-storage
-#sudo pip install --upgrade google-api-python-client # needed?
 
 # install packages (git, maven, gradle)
 sudo apt-get -y install git

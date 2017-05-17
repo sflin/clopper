@@ -9,17 +9,17 @@ Created on Wed May 10 14:58:12 2017
 import json
 import unittest
 import glob
-import src.OutputGenerator as og
+import src.outputgenerator as og
 import os
 import shutil
 class OutputGeneratorTest (unittest.TestCase):
     data = json.loads("""{"CL-params": {
                             "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml",
                             "-o": "/home/selin/output/output.csv",
-                            "-t": "benchmark"                          
+                            "-t": "benchmark",
+                            "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
-                          "project-id":"bt-sfabel"
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
                         }""")
     
     versions = ['8924a5f', 'a16e0bb', '5fa34fc', '01bc2b2']
@@ -63,7 +63,7 @@ class OutputGeneratorTest (unittest.TestCase):
     
     params = {'tests': None, 'runner': 'mvn', 'build-type': 'clean', 
               'outfile': u'/home/selin/output/output.csv', 'step': None, 
-              'cloud': 'bt-sfabel', 'backend': 'commits', 'start': None, 
+              'cloud': '/home/selin/storage-credentials.json clopper-storage', 'backend': 'commits', 'start': None, 
               'config': u'/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml', 
               'invert': False, 'to': None, 'mode': 'commit-mode', 
               'type': u'benchmark', 'codeonly': False}

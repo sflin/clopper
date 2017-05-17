@@ -976,6 +976,7 @@ class MvnVersionDistributorTest (unittest.TestCase):
         versioner = RandomDistributor()
         test_versions = versioner.get_versions(self.data)
         self.assertEquals(self.versions, test_versions)
+        
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSuiteTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
