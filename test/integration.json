@@ -10,9 +10,11 @@
     "-o": "/home/selin/Documents/Uni/Bachelorthesis/clopper/test/integration-output.csv",
     "-t": "benchmark",
     "-b": "commits",
-    "--tests": "'\\.runtime_sparse_deserialize_1_int_field$|\\.baseline$|\\.runtime_serialize_10_int_fields$'"
+    "--tests": "'\\.runtime_sparse_deserialize_1_int_field$|\\.baseline$|\\.runtime_serialize_10_int_fields$'",
+    "--cloud": "/home/selin/storage-credentials.json clopper-storage"
   },
   "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
-  "project-id":"bt-sfabel",
-  "distribution": "VersionTestDistributor"
+  "setup":"False",
+  "distribution": "VersionTestDistributor",
+  "ssh-key":"/home/selin/.ssh/gce-key"
 }

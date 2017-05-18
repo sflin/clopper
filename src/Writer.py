@@ -49,9 +49,9 @@ class Writer(object):
         cloud_flag = "~/" + self.data['credentials'].split('/')[-1] + " " + self.data['bucket-name']
         param_dict = {'-f':cl_dict['-f'], '-o':'~/tmp/out.csv', '-t':cl_dict['-t'],
                       '--cloud': cloud_flag}
-        mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
-                   '--mode', '--skip-noncode','--build-type']
-        
+        mapping = ['-b', '-r','-i', '--tests', '--mode', '--skip-noncode','--build-type']
+        if self.data['distribution'] == 'TestDistributor':
+            [mapping.append(item) for item in ('--from', '--to', '--step')]
         for key in mapping:
             try:
                 param_dict[key] = cl_dict[key]

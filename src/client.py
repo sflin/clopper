@@ -28,7 +28,7 @@ def initial_greeting(stubs):
             response = stub.SayHello(clopper_pb2.HelloRequest(request=''))
         except grpc._channel._Rendezvous:
             connected = False
-            logging.error(" Instance-" + str(stubs.index(stub) + 1) + " unavailable.")
+            logging.error(" Instance is unavailable.")
             continue
         logging.info(response.greeting)
     if not connected:
@@ -36,13 +36,13 @@ def initial_greeting(stubs):
                  " Please check connection.")
 
 def create_stubs(ports):
-    channels = [grpc.insecure_channel('localhost:222'+ pn) for pn in ports] # listen to port 2221 to 222x
+    channels = [grpc.insecure_channel('localhost:222'+ pn) for pn in ports]
     stubs = [clopper_pb2_grpc.ClopperStub(c) for c in channels]
     logging.info("Channel created.")
     return stubs
 
 def run(node_dict):
-    ports = [node[0].replace('instance-','') for node in node_dict.iteritems()]
+    ports = [node[0].split('-')[-1] for node in node_dict.iteritems()]
     stubs = create_stubs(ports) 
     initial_greeting(stubs) 
     logging.info("Trigger hopper execution...")

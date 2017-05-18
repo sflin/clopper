@@ -30,7 +30,7 @@ class CloudManagerTestTwo(unittest.TestCase):
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "-i":"/home/selin/api-key",
+                      "ssh-key":"/home/selin/ssh-key",
                       "username":"selin",
                       "setup":"False",
                       "bucket-name":"clopper-storage",
@@ -64,7 +64,8 @@ class CloudManagerTestThree(unittest.TestCase):
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "-i":"api-file"
+                      "setup":"False",
+                      "ssh-key":"api-file"
                       }"""
                       
         
@@ -115,7 +116,7 @@ class CloudManagerTestThree(unittest.TestCase):
             
     def test_no_key_file(self):
         data = json.loads(self.data)
-        del data['-i']
+        del data['ssh-key']
         config = "./test-config.json"
         with open(config, 'w') as conf:
             conf.write(json.dumps(data))      
@@ -195,7 +196,8 @@ class CloudManagerTestFour(unittest.TestCase):
                       "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
                       "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                       "distribution": "VersionDistributor",
-                      "-i":"key-file"
+                      "setup":"True",
+                      "ssh-key":"key-file"
                       }"""
                       
         

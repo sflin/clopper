@@ -30,10 +30,11 @@ def parse_json(param):
     with open(param) as data_file:
         data = json.load(data_file)
     
-    paras = ('total', 'CL-params', 'project', 'distribution', '-i')
+    paras = ('total', 'CL-params', 'project', 'distribution', 'ssh-key', 'ip-list', 'setup')
     if not all(para in data for para in paras):
         raise ValueError("Values required for: 'total', 'CL-params'"+
-                         "'project', 'distribution', and -i aka. API-key-file.")
+                         "'project', 'distribution', ssh-key, "+
+                         "ip-list, and setup.")
     if not '-t' in data['CL-params']:
         raise ValueError("-t flag required in CL-params.")
     if not '-f' in data['CL-params']:
@@ -42,8 +43,6 @@ def parse_json(param):
         raise ValueError("-o flag aka. output-file required in CL-params.")
     if not '--cloud' in data['CL-params']:
         raise ValueError("--cloud flag required in CL-params. ")
-    if 'ip-list' not in data:
-        raise ValueError("Ip-list required.")
     distri_modes = ('Distributor', 'TestDistributor', 'VersionDistributor', 
                          'VersionTestDistributor', 'RandomDistributor', 
                          'RandomVersionDistributor')
@@ -68,8 +67,8 @@ def parse_json(param):
 def clean_up(data):
     """Clean up local host and bucket storage."""
     
-    #shutil.rmtree(expanduser('~/tmp'))
-    #shutil.rmtree(expanduser('~/output')) 
+    shutil.rmtree(expanduser('~/tmp'))
+    shutil.rmtree(expanduser('~/output')) 
     os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data['bucket-name'])
@@ -97,10 +96,10 @@ def start_grpc_server(node_dict, data):
     """Start GRPC-server on cloud instances for communication."""
     
     for node in node_dict.iteritems():
-        port = node[0].replace('instance-', '')
+        port = node[0].split('-')[-1]
         ip = node[1]
         user = data['username']
-        key_file= data['-i']
+        key_file= data['ssh-key']
         cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L 222" + port 
         cmd+= ":localhost:8080 " + user + "@" + ip + " python /home/" + user + "/server.py"
         subprocess.Popen(cmd, shell=True)
@@ -114,16 +113,12 @@ def distribute_test_suite(node_dict, test_suite, data):
     for node, bundle in zip(node_dict.iteritems(), test_suite):
         config, cl = writer.generate_input(bundle) 
         ip = node[1]
-        key_file = data['-i']
+        key_file = data['ssh-key']
         user = data['username']
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(hostname=ip, username=user, key_filename=key_file)
         with SCPClient(client.get_transport()) as scp:
-            # TODO: remove
-            scp.put('/home/selin/Documents/Uni/Bachelorthesis/clopper/src/server.py', "/home/" + user)
-            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/hopper.py', "/home/"+ user + "/hopper/hopper.py")
-            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
             scp.put(config, "/home/" + user + "/tmp/config.tar.gz")
             scp.put(cl, "/home/" + user + "/tmp/params.tar.gz")
             scp.put(project, "/home/" + user + "/tmp/project.tar.gz")
@@ -133,7 +128,7 @@ def set_up(node, data):
     
     user = data['username']
     ip = node[1]
-    key_file = data['-i']
+    key_file = data['ssh-key']
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(hostname=ip, username=user, key_filename=key_file)
@@ -157,7 +152,7 @@ def set_up(node, data):
 
 def run():
     logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
-                        datefmt="%Y-%m-%d %H:%M:%S", filename='clopper-log.log', 
+                        datefmt="%Y-%m-%d %H:%M:%S", filename='../clopper-log.log', 
                         filemode='w', level=logging.INFO)
     logging.info("Starting execution")
     data = parse_json(sys.argv[1])
@@ -171,7 +166,7 @@ def run():
     node_dict = data['ip-list'] # format: {instance-i : ip}
     
     # configure instances if required
-    if 'setup' in data:
+    if 'True' in data['setup']:
         threads = [threading.Thread(target=set_up, args=(node, data,)) for node in node_dict.iteritems()]
         [t.start() for t in threads]
         [thread.join() for thread in threads]

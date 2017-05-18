@@ -131,7 +131,7 @@ class TestDistributor(object):
         
         if '--tests' in data['CL-params']:
             if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
             else:
                 tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
@@ -182,7 +182,7 @@ class VersionTestDistributor(object):
         
         if '--tests' in data['CL-params']:
             if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
             else:
                 tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
@@ -241,7 +241,7 @@ class RandomDistributor(object):
         
         if '--tests' in data['CL-params']:
             if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('\.', '').replace('|', '').split('$')[:-1]
+                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
             else:
                 tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
