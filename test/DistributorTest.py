@@ -118,11 +118,11 @@ class VersionDistributorTest (unittest.TestCase):
         test_suite = tester.split(splits, 2)
         self.assertEquals(len(test_suite), 2)
         self.assertIn(len(test_suite[0]), [4,5])
-        self.assertItemsEqual(test_suite, [splits[:4], splits[4:]])
-        self.assertIn(test_suite[1], [splits[:4], splits[4:]])
+        self.assertItemsEqual(test_suite, [splits[:5], splits[5:]])
+        self.assertIn(test_suite[1], [splits[:5], splits[5:]])
         test_suite = tester.split(splits, 5)
         self.assertEquals(len(test_suite), 5)
-        self.assertIn(len(test_suite[0]), [1,5])
+        self.assertIn(len(test_suite[0]), [1,2])
         test_suite = tester.split(splits[:5], 5)
         self.assertEquals(len(test_suite), 5)
         self.assertEquals(len(test_suite[0]), 1)
@@ -130,7 +130,7 @@ class VersionDistributorTest (unittest.TestCase):
                                                [splits[2]], [splits[3]],
                                                [splits[4]]])
         test_suite = tester.split(splits[:3], 5)
-        self.assertItemsEqual(test_suite, [splits[:3],[],[],[],[]])
+        self.assertItemsEqual(test_suite, [[1],[2],[3],[],[]])
         
         
     def test_get_suite_1inst(self):
@@ -154,8 +154,8 @@ class VersionDistributorTest (unittest.TestCase):
         self.assertEquals(test_result[0][1][0], None)
         self.assertEquals(test_result[1][1][0], None)
         self.assertEquals(test_result[2][1][0], None)
-        self.assertItemsEqual(test_result, [[self.versions[:13], [None]], [self.versions[13:26], [None]],
-                                         [self.versions[26:], [None]]])
+        self.assertItemsEqual(test_result, [[self.versions[:14], [None]], [self.versions[14:28], [None]],
+                                         [self.versions[28:], [None]]])
 
     def test_get_suite_5insts(self):
         self.data['total']=5
@@ -169,9 +169,9 @@ class VersionDistributorTest (unittest.TestCase):
         self.assertEquals(test_result[3][1][0], None)
         self.assertEquals(test_result[4][1][0], None)
         self.assertNotEqual(test_result.content, 'random')
-        self.assertItemsEqual(test_result, [[self.versions[:8], [None]], [self.versions[8:16], [None]],
-                                         [self.versions[16:24], [None]], [self.versions[24:32], [None]],
-                                         [self.versions[32:], [None]]])
+        self.assertItemsEqual(test_result, [[self.versions[:9], [None]], [self.versions[9:17], [None]],
+                                         [self.versions[17:25], [None]], [self.versions[25:33], [None]],
+                                         [self.versions[33:], [None]]])
         self.assertEquals(len(test_result), 5)
         
     def test_get_suite_50insts(self):
@@ -241,20 +241,20 @@ class RandomVersionDistributorTest (unittest.TestCase):
         test_suite = tester.split(splits, 2)
         self.assertEquals(len(test_suite), 2)
         self.assertIn(len(test_suite[0]), [4,5])
-        self.assertItemsEqual(test_suite, [splits[:4], splits[4:]])
-        self.assertIn(test_suite[1], [splits[:4], splits[4:]])
+        self.assertItemsEqual(test_suite, [splits[:5], splits[5:]])
+        self.assertIn(test_suite[1], [splits[:5], splits[5:]])
         test_suite = tester.split(splits, 5)
         self.assertEquals(len(test_suite), 5)
-        self.assertEqual(len(test_suite[0]), 1)
-        self.assertEqual(len(test_suite[-1]), 5)
+        [self.assertEqual(len(test_suite[i]), 2) for i in range(4)]
+        self.assertEqual(len(test_suite[-1]), 1)
         test_suite = tester.split(splits[:5], 5)
         self.assertEquals(len(test_suite), 5)
         self.assertEquals(len(test_suite[0]), 1)
         self.assertItemsEqual(test_suite, [[splits[0]], [splits[1]],
                                                [splits[2]], [splits[3]],
                                                [splits[4]]])
-        test_suite = tester.split(splits[:3], 5)
-        self.assertItemsEqual(test_suite[:4], [[],[],[],[]])
+        test_suite = tester.split([1,2,3], 5)
+        self.assertItemsEqual(test_suite, [[1],[2],[3],[],[]])
 
     def test_random_version_distributor_1inst(self):
         self.data['total'] = 1
@@ -333,7 +333,7 @@ class TestDistributorTest (unittest.TestCase):
         self.assertItemsEqual(self.benchmarks, tests)
         
     def test_get_target_tests2(self):
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.baseline$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.baseline$|.*\\.runtime_serialize_10_int_fields$'"
         tester = TestDistributor()
         tests = tester.get_target(self.data)
         self.assertItemsEqual(['runtime_sparse_deserialize_1_int_field','baseline','runtime_serialize_10_int_fields'], tests)
@@ -347,19 +347,19 @@ class TestDistributorTest (unittest.TestCase):
         test_suite = tester.split(splits, 2)
         self.assertEquals(len(test_suite), 2)
         self.assertIn(len(test_suite[0]), [4,5])
-        self.assertItemsEqual(test_suite, [splits[:4], splits[4:]])
-        self.assertIn(test_suite[1], [splits[:4], splits[4:]])
+        self.assertItemsEqual(test_suite, [splits[:5], splits[5:]])
+        self.assertIn(test_suite[1], [splits[:5], splits[5:]])
         test_suite = tester.split(splits, 5)
         self.assertEquals(len(test_suite), 5)
-        self.assertEqual(len(test_suite[0]), 1)
-        self.assertEqual(len(test_suite[-1]), 5)
+        self.assertEqual(len(test_suite[0]), 2)
+        self.assertEqual(len(test_suite[-1]), 1)
         test_suite = tester.split(splits[:5], 5)
         self.assertEquals(len(test_suite), 5)
         self.assertEquals(len(test_suite[0]), 1)
         self.assertItemsEqual(test_suite, [[splits[0]],[splits[1]],[splits[2]],
                                            [splits[3]],[splits[4]]])
         test_suite = tester.split(splits[:3], 5)
-        self.assertItemsEqual(test_suite[:4], [[],[],[],[]])
+        self.assertItemsEqual(test_suite[-1], [])
         
     def test_get_target_unit(self):
         self.data['CL-params']['--tests'] = "'runtime_sparse_deserialize_1_int_field,baseline,runtime_serialize_10_int_fields'"
@@ -426,7 +426,7 @@ class TestDistributorTest (unittest.TestCase):
         self.assertEquals(test_result[2][0][0], None)
         self.assertEquals(test_result[3][0][0], None)
         self.assertEquals(test_result[4][0][0], None)
-        self.assertGreater(len(test_result[4][1]),len(test_result[0][1]))
+        self.assertGreater(len(test_result[0][1]),len(test_result[4][1]))
     
     def test_get_suite_11insts(self):
         self.data['total']=11
@@ -499,18 +499,18 @@ class VersionTestDistributorTest (unittest.TestCase):
         test_suite = tester.split(splits, 2)
         self.assertEquals(len(test_suite), 2)
         self.assertIn(len(test_suite[0]), [4,5])
-        self.assertEquals(test_suite, [splits[:4], splits[4:]])
+        self.assertEquals(test_suite, [splits[:5], splits[5:]])
         
         test_suite = tester.split(splits, 5)
         self.assertEquals(len(test_suite), 5)
-        self.assertEquals(test_suite, [[1],[2],[3],[4],[5,6,7,8,9]])
+        self.assertEquals(test_suite, [[1,2],[3,4],[5,6],[7,8],[9]])
         
         test_suite = tester.split(splits[:5], 5)
         self.assertEquals(len(test_suite), 5)
         self.assertEquals(len(test_suite[0]), 1)
         self.assertItemsEqual(test_suite, [[1],[2],[3],[4],[5]])
         test_suite = tester.split(splits[:3], 5)
-        self.assertItemsEqual(test_suite, [[],[],[],[],[1,2,3]])
+        self.assertItemsEqual(test_suite, [[1],[2],[3],[],[]])
         
     def test_get_target(self):
         versioner = VersionTestDistributor()
@@ -523,7 +523,7 @@ class VersionTestDistributorTest (unittest.TestCase):
         self.assertItemsEqual(self.benchmarks, tests)
         
     def test_get_target_tests2(self):
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.baseline$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.baseline$|.*\\.runtime_serialize_10_int_fields$'"
         tester = VersionTestDistributor()
         tests = tester.get_tests(self.data)
         self.assertItemsEqual(['runtime_sparse_deserialize_1_int_field','baseline','runtime_serialize_10_int_fields'], tests)
@@ -549,21 +549,21 @@ class VersionTestDistributorTest (unittest.TestCase):
         self.assertEquals(len(test_result), 2)
         self.assertEquals(len(test_result[0]), 2)
         self.assertEquals(len(test_result[1]), 2)
-        self.assertIn(test_result[0][0],[self.versions[:20],self.versions[20:]])
-        self.assertIn(test_result[1][0],[self.versions[:20],self.versions[20:]])
+        self.assertIn(test_result[0][0],[self.versions[:21],self.versions[21:]])
+        self.assertIn(test_result[1][0],[self.versions[:21],self.versions[21:]])
         self.assertNotEqual(test_result[0][1] + test_result[1][1], self.benchmarks)
         self.assertNotEqual(test_result[1][1], self.benchmarks)
         self.assertItemsEqual(test_result[0][1]+test_result[1][1], self.benchmarks)
     
     def test_small_tests(self):
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.runtime_serialize_10_int_fields$'"
         self.data['total'] = 3
         distributor = Distributor(self.data, strategy = VersionTestDistributor)
         test_result = distributor.get_suite()
         self.assertEqual(len(test_result),3)
         self.assertEqual(test_result[2],[[None],[None]])
-        self.assertEqual(test_result[0][0], self.versions[:20])
-        self.assertEqual(test_result[1][0], self.versions[20:])
+        self.assertEqual(test_result[0][0], self.versions[:21])
+        self.assertEqual(test_result[1][0], self.versions[21:])
         self.assertIn(test_result[0][1], [['runtime_sparse_deserialize_1_int_field'],['runtime_serialize_10_int_fields']])
         self.assertIn(test_result[1][1], [['runtime_sparse_deserialize_1_int_field'],['runtime_serialize_10_int_fields']])
         del self.data['CL-params']['--tests']
@@ -617,14 +617,14 @@ class VersionTestDistributorTest (unittest.TestCase):
         with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
             config.write(xml)
         self.data['total'] = 4
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.runtime_serialize_10_int_fields$'"
         distributor = Distributor(self.data, strategy = VersionTestDistributor)
         test_result = distributor.get_suite()
         self.assertEqual(len(test_result),4)
         self.assertEqual(test_result[2],[[None],[None]])
         self.assertEqual(test_result[3],[[None],[None]])
-        self.assertEqual(test_result[0][0],['8924a5f'])
-        self.assertEqual(test_result[1][0],['a16e0bb','5fa34fc'])
+        self.assertEqual(test_result[0][0],['8924a5f','a16e0bb'])
+        self.assertEqual(test_result[1][0],['5fa34fc'])
         self.assertEqual(len(test_result[0][1]), 1)
         self.assertEqual(len(test_result[1][1]), 1)
         del self.data['CL-params']['--tests']
@@ -718,19 +718,19 @@ class RandomDistributorTest (unittest.TestCase):
         test_suite = tester.split(splits, 2)
         self.assertEquals(len(test_suite), 2)
         self.assertIn(len(test_suite[0]), [4,5])
-        self.assertItemsEqual(test_suite, [splits[:4], splits[4:]])
-        self.assertIn(test_suite[1], [splits[:4], splits[4:]])
+        self.assertItemsEqual(test_suite, [splits[:5], splits[5:]])
+        self.assertIn(test_suite[1], [splits[:5], splits[5:]])
         test_suite = tester.split(splits, 5)
         self.assertEquals(len(test_suite), 5)
-        self.assertEqual(len(test_suite[0]), 1)
-        self.assertEqual(len(test_suite[-1]), 5)
+        self.assertEqual(len(test_suite[0]), 2)
+        self.assertEqual(len(test_suite[-1]), 1)
         test_suite = tester.split(splits[:5], 5)
         self.assertEquals(len(test_suite), 5)
         self.assertEquals(len(test_suite[0]), 1)
         self.assertItemsEqual(test_suite, [[splits[0]],[splits[1]],[splits[2]],
                                            [splits[3]],[splits[4]]])
-        test_suite = tester.split(splits[:3], 5)
-        self.assertItemsEqual(test_suite[:4], [[],[],[],[]])
+        test_suite = tester.split([1,2,3], 5)
+        self.assertItemsEqual(test_suite, [[1],[2],[3],[],[]])
         
     def test_get_target(self):
         versioner = RandomDistributor()
@@ -743,7 +743,7 @@ class RandomDistributorTest (unittest.TestCase):
         self.assertItemsEqual(self.benchmarks, tests)
         
     def test_get_target_tests2(self):
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.baseline$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.baseline$|.*\\.runtime_serialize_10_int_fields$'"
         tester = RandomDistributor()
         tests = tester.get_tests(self.data)
         self.assertItemsEqual(['runtime_sparse_deserialize_1_int_field','baseline','runtime_serialize_10_int_fields'], tests)
@@ -778,7 +778,7 @@ class RandomDistributorTest (unittest.TestCase):
         self.assertItemsEqual(test_result[0][1]+test_result[1][1], self.benchmarks)
         
     def test_small_tests(self):
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.runtime_serialize_10_int_fields$'"
         self.data['total'] = 3
         distributor = Distributor(self.data, strategy = RandomDistributor)
         test_result = distributor.get_suite()
@@ -837,14 +837,14 @@ class RandomDistributorTest (unittest.TestCase):
         with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
             config.write(xml)
         self.data['total'] = 4
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.runtime_serialize_10_int_fields$'"
         distributor = Distributor(self.data, strategy = RandomDistributor)
         test_result = distributor.get_suite()
         self.assertEqual(len(test_result),4)
         self.assertEqual(test_result[2],[[None],[None]])
         self.assertEqual(test_result[3],[[None],[None]])
-        self.assertEqual(len(test_result[0][0]), 1)
-        self.assertEqual(len(test_result[1][0]),2)
+        self.assertEqual(len(test_result[0][0]), 2)
+        self.assertEqual(len(test_result[1][0]),1)
         self.assertEqual(len(test_result[0][1]), 1)
         self.assertEqual(len(test_result[1][1]), 1)
         del self.data['CL-params']['--tests']
@@ -869,7 +869,7 @@ class RandomDistributorTest (unittest.TestCase):
         with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
             config.write(xml)
         self.data['total'] = 4
-        self.data['CL-params']['--tests'] = "'\\.runtime_sparse_deserialize_1_int_field$|\\.runtime_serialize_10_int_fields$'"
+        self.data['CL-params']['--tests'] = "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.runtime_serialize_10_int_fields$'"
         distributor = Distributor(self.data, strategy = RandomDistributor)
         test_result = distributor.get_suite()
         self.assertEqual(len(test_result),4)

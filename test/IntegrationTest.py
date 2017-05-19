@@ -62,9 +62,9 @@ class IntegrationTest(unittest.TestCase):
         [thread.join() for thread in threads]
         logging.info("Shutting down cloud-manager-client...")
     
-    @mock.patch('src.CloudManager.distribute_test_suite', side_effect=simple_distribute)
-    @mock.patch('src.CloudManager.start_grpc_server', side_effect=start_local)
-    @mock.patch('src.CloudManager.client.run', side_effect=run_minimal)
+    @mock.patch('src.clopper.distribute_test_suite', side_effect=simple_distribute)
+    @mock.patch('src.clopper.start_grpc_server', side_effect=start_local)
+    @mock.patch('src.clopper.client.run', side_effect=run_minimal)
     def test_run(self, distribute, local, run):
         cm.run()
         assert distribute.called

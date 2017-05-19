@@ -66,9 +66,10 @@ def parse_json(param):
 
 def clean_up(data):
     """Clean up local host and bucket storage."""
-    
-    shutil.rmtree(expanduser('~/tmp'))
-    shutil.rmtree(expanduser('~/output')) 
+    try:
+        shutil.rmtree(expanduser('~/tmp'))
+    except OSError:
+        pass
     os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data['bucket-name'])
@@ -76,21 +77,18 @@ def clean_up(data):
     bucket.delete_blobs(bucket_files)
 
 def get_results(data):
-    try:
-        os.mkdir(expanduser('~/output'))
-    except OSError:
-        shutil.rmtree(expanduser('~/output'))
-        os.mkdir(expanduser('~/output'))
-        logging.warning("Replace output folder.")
+    t = str(time.time()).replace('.','')
+    os.mkdir(expanduser('~/output-' + t))
     os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data['bucket-name'])
     bucket_files = bucket.list_blobs()
     for bf in bucket_files:
         blob = bucket.blob(bf.name)
-        blob.download_to_filename(expanduser('~/output/' + str(blob.name)))
-    files = glob.glob(expanduser('~/output/*.csv'))
+        blob.download_to_filename(expanduser('~/output-' + t +'/' + str(blob.name)))
+    files = glob.glob(expanduser('~/output-' + t + '/*.csv'))
     og.concat(data, files)
+    shutil.rmtree(expanduser('~/output-' + t))
 
 def start_grpc_server(node_dict, data):
     """Start GRPC-server on cloud instances for communication."""
@@ -152,17 +150,10 @@ def set_up(node, data):
 
 def run():
     logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
-                        datefmt="%Y-%m-%d %H:%M:%S", filename='../clopper-log.log', 
-                        filemode='w', level=logging.INFO)
+                        datefmt="%Y-%m-%d %H:%M:%S", filemode='w', level=logging.INFO,
+                        filename='../clopper-log' + str(time.time()).replace('.','') + '.log')
     logging.info("Starting execution")
     data = parse_json(sys.argv[1])
-    try:
-        os.mkdir(expanduser('~/tmp'))
-    except OSError:
-        shutil.rmtree(expanduser('~/tmp'))
-        os.mkdir(expanduser('~/tmp'))
-        logging.warning("Folder tmp replaced.")
-    
     node_dict = data['ip-list'] # format: {instance-i : ip}
     
     # configure instances if required
@@ -171,7 +162,13 @@ def run():
         [t.start() for t in threads]
         [thread.join() for thread in threads]
         logging.info("Instances successfully configured.")
-        
+    
+    try:
+        os.mkdir(expanduser('~/tmp'))
+    except OSError:
+        shutil.rmtree(expanduser('~/tmp'))
+        os.mkdir(expanduser('~/tmp'))
+        logging.warning("Folder tmp replaced.")
     # create and distribute test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
     test_suite = distributor.get_suite()
@@ -185,6 +182,7 @@ def run():
             
     distribute_test_suite(node_dict, test_suite, data)
     logging.info("Splits distributed among instances.")
+    os.chdir(expanduser('~'))
     
     # start gRPC-server on instances
     start_grpc_server(node_dict, data)

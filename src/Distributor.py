@@ -40,7 +40,7 @@ class Distributor(object):
              
             
 class VersionDistributor(object):
-    """Version range, all tests
+    """Version ranges, all tests
         for 3 instances, generates output of format 
             [[[v1],[None]],[[v2],[None]],[[v3],[None]]]"""
             
@@ -48,7 +48,7 @@ class VersionDistributor(object):
         
         kwargs = {'mode':'commit-mode','skip-noncode':False, 
                   'start':None, 'end':None, 'step':None}
-        mapping = {'mode':'--mode', 'codeonly':'--skip-noncode',
+        mapping = {'mode':'--mode', 'skip-noncode':'--skip-noncode',
                    'start':'--from', 'end':'--to', 'step':'--step'}
         for key in mapping.keys():
             try:
@@ -62,12 +62,13 @@ class VersionDistributor(object):
         target = backend.generate_version_list(**kwargs)
         return target
     
-    def split(self, target, total_inst):
+    def split(self, target, total):
         
-        x = len(target)/total_inst
+        x = len(target)/total
+        bigger = len(target)%total
         suite = TestSuite()
-        [suite.append(target[i*x:(i+1)*x]) for i in range(total_inst-1)]
-        suite.append(target[(total_inst-1)*x:]) # for last group and if odd number - assign last elements
+        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
+        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
         random.shuffle(suite)
         return suite
     
@@ -89,7 +90,7 @@ class RandomVersionDistributor(object):
         
         kwargs = {'mode':'commit-mode','skip-noncode':False, 
                   'start':None, 'end':None, 'step':None}
-        mapping = {'mode':'--mode', 'codeonly':'--skip-noncode',
+        mapping = {'mode':'--mode', 'skip-noncode':'--skip-noncode',
                    'start':'--from', 'end':'--to', 'step':'--step'}
         for key in mapping.keys():
             try:
@@ -103,13 +104,14 @@ class RandomVersionDistributor(object):
         target = backend.generate_version_list(**kwargs)
         return target
     
-    def split(self, target, total_inst):
+    def split(self, target, total):
         
         random.shuffle(target)
-        x = len(target)/total_inst
-        suite = TestSuite(content='random')
-        [suite.append(target[i*x:(i+1)*x]) for i in range(total_inst-1)]
-        suite.append(target[(total_inst-1)*x:])
+        x = len(target)/total
+        bigger = len(target)%total
+        suite = TestSuite()
+        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
+        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
         return suite
     
     def get_suite(self, instance):
@@ -138,13 +140,14 @@ class TestDistributor(object):
         target = parser.parse(data) 
         return target
     
-    def split(self, target, total_inst):
+    def split(self, target, total):
         
         random.shuffle(target)
-        x = len(target)/total_inst
-        suite = TestSuite(content='random')
-        [suite.append(target[i*x:(i+1)*x]) for i in range(total_inst-1)]
-        suite.append(target[(total_inst-1)*x:])
+        x = len(target)/total
+        bigger = len(target)%total
+        suite = TestSuite()
+        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
+        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
         return suite
     
     def get_suite(self, instance):
@@ -164,7 +167,7 @@ class VersionTestDistributor(object):
         
         kwargs = {'mode':'commit-mode','skip-noncode':False, 
                   'start':None, 'end':None, 'step':None}
-        mapping = {'mode':'--mode', 'codeonly':'--skip-noncode',
+        mapping = {'mode':'--mode', 'skip-noncode':'--skip-noncode',
                    'start':'--from', 'end':'--to', 'step':'--step'}
         for key in mapping.keys():
             try:
@@ -189,13 +192,14 @@ class VersionTestDistributor(object):
         target = parser.parse(data)
         return target
     
-    def split(self, target, total_inst):
+    def split(self, target, total):
         
-        x = len(target)/total_inst
+        x = len(target)/total
+        bigger = len(target)%total
         suite = TestSuite()
-        [suite.append(target[i*x:(i+1)*x]) for i in range(total_inst-1)]
-        suite.append(target[(total_inst-1)*x:])
-        return suite  
+        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
+        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
+        return suite
     
     def get_suite(self, instance):
         versions = self.get_versions(instance.data)
@@ -223,7 +227,7 @@ class RandomDistributor(object):
         
         kwargs = {'mode':'commit-mode','skip-noncode':False, 
                   'start':None, 'end':None, 'step':None}
-        mapping = {'mode':'--mode', 'codeonly':'--skip-noncode',
+        mapping = {'mode':'--mode', 'skip-noncode':'--skip-noncode',
                    'start':'--from', 'end':'--to', 'step':'--step'}
         for key in mapping.keys():
             try:
@@ -248,13 +252,14 @@ class RandomDistributor(object):
         target = parser.parse(data)
         return target
     
-    def split(self, target, total_inst):
+    def split(self, target, total):
         
         random.shuffle(target)
-        x = len(target)/total_inst
-        suite = TestSuite(content='random')
-        [suite.append(target[i*x:(i+1)*x]) for i in range(total_inst-1)]
-        suite.append(target[(total_inst-1)*x:])
+        x = len(target)/total
+        bigger = len(target)%total
+        suite = TestSuite()
+        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
+        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
         return suite  
     
     def get_suite(self, instance):

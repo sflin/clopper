@@ -22,7 +22,8 @@ class WriterTest(unittest.TestCase):
                             "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
                 "credentials": "/home/selin/storage-credentials.json",
-                "bucket-name": "clopper-storage"
+                "bucket-name": "clopper-storage",
+                "distribution":"TestDistributor"
                 }"""
     mapping = ['-b', '-r','--from','--to', '--step','-i', '--tests', 
                    '--mode', '--skip-noncode','--build-type'] 
@@ -64,7 +65,8 @@ class ParamWriterTest(unittest.TestCase):
                             "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
                 "credentials": "/home/selin/storage-credentials.json",
-                "bucket-name": "clopper-storage"
+                "bucket-name": "clopper-storage",
+                "distribution":"VersionDistributor"
                 }"""
 
     def setUp(self):
@@ -184,7 +186,8 @@ class MvnCommitsWriterTest(unittest.TestCase):
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
                           "username":"selin",
                             "credentials": "/home/selin/storage-credentials.json",
-                            "bucket-name": "clopper-storage"
+                            "bucket-name": "clopper-storage",
+                "distribution":"VersionDistributor"
                         }""") 
     
     xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -306,7 +309,8 @@ class MvnVersionWriterTest(unittest.TestCase):
                           },
                           "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/version-test-conf.xml",
                           "project-id":"bt-sfabel",
-                          "username":"selin"
+                          "username":"selin",
+                "distribution":"VersionDistributor"
                         }""") 
     
     xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -410,7 +414,8 @@ class WriterTestAll(unittest.TestCase):
                           "project-id":"bt-sfabel",
                             "credentials": "/home/selin/storage-credentials.json",
                             "bucket-name": "clopper-storage",
-                          "username":"selin"
+                          "username":"selin",
+                "distribution":"VersionDistributor"
                         }""") 
     
     xml = """<?xml version="1.0" encoding="UTF-8"?>

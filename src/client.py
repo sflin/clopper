@@ -14,8 +14,7 @@ import clopper_pb2_grpc
 import sys
 
 def status_request(stub):
-    #TODO: adapt request-time
-    for u in stub.UpdateStatus(clopper_pb2.StatusRequest(request='15')):
+    for u in stub.UpdateStatus(clopper_pb2.StatusRequest(request='300')):
         if u.status == 'ERROR':
             logging.critical("ERROR on " + u.name)
         logging.info(u.name + ' --- ' + u.status)      

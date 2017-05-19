@@ -32,4 +32,4 @@ def parse(data):
                                 test_name = re.search(name_pat, line)
                                 test_list.append(test_name.group(1))
                                 searching = False
-    return test_list
+    return list(set(test_list))
