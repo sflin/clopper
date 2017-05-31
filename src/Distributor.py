@@ -133,7 +133,7 @@ class TestDistributor(object):
         
         if '--tests' in data['CL-params']:
             if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
+                tests = data['CL-params']['--tests'].replace("$","").replace("'", "").split('|')
             else:
                 tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
@@ -160,8 +160,8 @@ class TestDistributor(object):
         result = result.nest(total_inst*[[None]], suite, total_inst)
         return result
 
-class VersionTestDistributor(object):
-    """Version ranges, random tests"""
+class RMIT(object):
+    """Generate Testsuite according to the RMIT-principle."""
     
     def get_versions(self, data):
         
@@ -185,67 +185,7 @@ class VersionTestDistributor(object):
         
         if '--tests' in data['CL-params']:
             if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
-            else:
-                tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
-            return tests
-        target = parser.parse(data)
-        return target
-    
-    def split(self, target, total):
-        
-        x = len(target)/total
-        bigger = len(target)%total
-        suite = TestSuite()
-        [suite.append(target[i*(x+1):(i+1)*(x+1)]) for i in range(bigger)]
-        [suite.append(target[(bigger*(x+1))+i*x:(bigger*(x+1))+(i+1)*x]) for i in range(total - bigger)]
-        return suite
-    
-    def get_suite(self, instance):
-        versions = self.get_versions(instance.data)
-        tests = self.get_tests(instance.data)
-        random.shuffle(tests)
-        total_inst = instance.data['total']
-        if len(versions) < total_inst or len(tests) < total_inst:
-            (min_list, max_list) = (versions, tests) if len(versions) < len(tests) else (tests, versions)
-            max_list = self.split(max_list, len(min_list))
-            min_list = self.split(min_list, len(min_list))
-            [max_list.append([None]) for x in range(0, total_inst - len(max_list))]
-            [min_list.append([None]) for x in range(0, total_inst - len(min_list))]
-            (versions, tests) = (min_list, max_list) if len(versions) < len(tests) else (max_list, min_list)
-        else:
-            versions = self.split(versions, total_inst)
-            random.shuffle(versions)
-            tests = self.split(tests, total_inst)
-        suite = TestSuite()
-        suite = suite.nest(versions, tests, instance.data['total'])
-        return suite
-        
-class RandomDistributor(object):
-    """Random versions, random tests."""
-    def get_versions(self, data):
-        
-        kwargs = {'mode':'commit-mode','skip-noncode':False, 
-                  'start':None, 'end':None, 'step':None}
-        mapping = {'mode':'--mode', 'skip-noncode':'--skip-noncode',
-                   'start':'--from', 'end':'--to', 'step':'--step'}
-        for key in mapping.keys():
-            try:
-                kwargs[key] = data['CL-params'][mapping[key]]
-            except KeyError:
-                continue
-        if data['CL-params'].has_key('-b') and data['CL-params']['-b'] == 'versions':
-            backend = MvnVersionWalker(data['CL-params']['-f'])
-        else:
-            backend = MvnCommitWalker(data['CL-params']['-f'])
-        target = backend.generate_version_list(**kwargs)
-        return target
-    
-    def get_tests(self, data):
-        
-        if '--tests' in data['CL-params']:
-            if data['CL-params']['-t']=='benchmark':
-                tests = data['CL-params']['--tests'].replace("'", "").replace('.*\.', '').replace('|', '').split('$')[:-1]
+                tests = data['CL-params']['--tests'].replace("$","").replace("'", "").split('|')
             else:
                 tests = data['CL-params']['--tests'].replace("'", "").replace(" ","").split(',')
             return tests
@@ -265,19 +205,18 @@ class RandomDistributor(object):
     def get_suite(self, instance):
         versions = self.get_versions(instance.data)
         tests = self.get_tests(instance.data)
-        random.shuffle(tests)
-        random.shuffle(versions)
+        result = TestSuite(content='random')
+        tuples = []
+        for v in versions:
+            [tuples.append([v, t]) for t in tests]
+        random.shuffle(tuples)
         total_inst = instance.data['total']
-        if len(versions) < total_inst or len(tests) < total_inst:
-            (min_list, max_list) = (versions, tests) if len(versions) < len(tests) else (tests, versions)
-            max_list = self.split(max_list, len(min_list))
-            min_list = self.split(min_list, len(min_list))
-            [max_list.append([None]) for x in range(0, total_inst - len(max_list))]
-            [min_list.append([None]) for x in range(0, total_inst - len(min_list))]
-            (versions, tests) = (min_list, max_list) if len(versions) < len(tests) else (max_list, min_list)
-        else:
-            versions = self.split(versions, total_inst)
-            tests = self.split(tests, total_inst)
+        result = self.split(tuples, total_inst)
         suite = TestSuite(content='random')
-        suite = suite.nest(versions, tests, total_inst)
-        return suite       
+        for element in result:
+            v =  []
+            t = []
+            [v.append(item[0]) for item in element]
+            [t.append(item[1]) for item in element]
+            suite.append([v, t])
+        return suite  

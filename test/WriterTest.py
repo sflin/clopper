@@ -136,7 +136,7 @@ class ParamWriterTest(unittest.TestCase):
         self.assertEqual(param, 'cl-params-1.txt')
         with open(param, 'r') as f:
             buf = f.read()
-        self.assertIn("--tests '.*\.foo$|.*\.bar$|.*\.baz$'", buf)
+        self.assertIn("--tests 'foo$|bar$|baz$'", buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
         self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
@@ -157,7 +157,7 @@ class ParamWriterTest(unittest.TestCase):
         self.assertEqual(param, 'cl-params-1.txt')
         with open(param, 'r') as f:
             buf = f.read()
-        self.assertIn("--tests '.*\.foo$|.*\.bar$|.*\.baz$'", buf)
+        self.assertIn("--tests 'foo$|bar$|baz$'", buf)
         self.assertIn('-o ~/tmp/out.csv', buf)
         self.assertIn('-f ~/tmp/config/cloud-config-1.xml', buf)
         self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
@@ -549,6 +549,83 @@ class WriterTestAll(unittest.TestCase):
         os.chdir('./test-param')
         num_files = len([name for name in os.listdir('.')])
         self.assertEquals(num_files, 7)
+        
+class RMITWriter(unittest.TestCase):
+    data = json.loads("""{
+                          "CL-params": {
+                            "-f": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                            "-o": "/home/selin/output/output.csv",
+                            "-t": "benchmark"
+                          },
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
+                          "config": "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-config.xml",
+                          "project-id":"bt-sfabel",
+                            "credentials": "/home/selin/storage-credentials.json",
+                            "bucket-name": "clopper-storage",
+                          "username":"selin",
+                "distribution":"RMIT"
+                        }""") 
+    
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <historian type="MvnCommitWalker">
+            <project name="Protostuff" dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/protostuff">
+                    <jmh_root dir="/home/selin/Documents/Uni/Bachelorthesis/Testing/project/benchmarks" />
+                    <junit>
+                            <execs>1</execs>
+                    </junit>
+                    <versions>
+                            <start>8924a5f</start>
+                            <end>4c2ec16</end>
+                    </versions>
+            </project>
+            <jmh_arguments>
+                    -f 1 -tu s -bm thrpt -wi 1 -i 1 -r 1
+            </jmh_arguments>
+    </historian>"""
+    
+    def setUp(self):
+        try:
+            os.mkdir(expanduser('~/tmp'))
+        except OSError:
+            pass
+        try:
+            os.mkdir(expanduser('~/tmp/config'))
+        except OSError:
+           pass
+        os.chdir(expanduser('~/tmp/config'))
+        with open("/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml", 'w') as config:
+            config.write(self.xml)
+        self.data['CL-params']['-f'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        self.data['config'] = "/home/selin/Documents/Uni/Bachelorthesis/Testing/test-conf.xml"
+        
+    def tearDown(self):
+        shutil.rmtree(expanduser('~/tmp')) 
+        
+    def test_generate_input(self):
+        writer = Writer(self.data, content='random')
+        config, param = writer.generate_input([['5fa34fc', 'a16e0bb','8924a5f'], 
+                                                ['abc', 'abc', 'xyz']])
+        self.assertEqual(config, expanduser('~/tmp/config.tar.gz'))
+        tar = tarfile.open(expanduser(config))
+        tar.extractall(path=expanduser('./config'))
+        tar.close()
+        os.chdir('./config')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 3)
+        self.assertEqual(param, expanduser('~/tmp/params.tar.gz'))
+        tar = tarfile.open(expanduser(param))
+        tar.extractall(path=expanduser('./test-param'))
+        tar.close()
+        os.chdir('./test-param')
+        num_files = len([name for name in os.listdir('.')])
+        self.assertEquals(num_files, 3)
+        self.assertItemsEqual(os.listdir('.'), ['cl-params-1.txt','cl-params-2.txt','cl-params-3.txt'])
+        with open('cl-params-2.txt', 'r') as f:
+            buf = f.read()
+        self.assertIn("--tests 'abc$'", buf)
+        self.assertIn('-o ~/tmp/out.csv', buf)
+        self.assertIn('-f ~/tmp/config/cloud-config-2.xml', buf)
+        self.assertIn('--cloud ~/storage-credentials.json clopper-storage', buf)
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(WriterTest)
@@ -560,4 +637,6 @@ if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(MvnVersionWriterTest)
     unittest.TextTestRunner(verbosity=5).run(suite)
     suite = unittest.TestLoader().loadTestsFromTestCase(WriterTestAll)
+    unittest.TextTestRunner(verbosity=5).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(RMITWriter)
     unittest.TextTestRunner(verbosity=5).run(suite)

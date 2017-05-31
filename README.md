@@ -17,7 +17,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
 * In Google's [storage-console](https://console.cloud.google.com/storage/), create a new bucket. Note down its name (e.g. "clopper-storage").
 * Visit Google's [API-console](https://console.cloud.google.com/apis/credentials) and establish a new service account key: > Create credentials > Service Account key > Select default service account > json-format (default) > Create. These are the credentials for the cloud storage bucket. Download the json-file and store it in a secure place. Note down the file path. 
 * Create a number of desired instances on a cloud-platform of your choice or use a group of remote computers. Note down their IP-addresses and optionally their names. Please use Ubuntu 16.04 LTS as operating system on your instances.
-* Generate a new SSH key for your instances. Choose the name to use on the instances (most likely you hostname). Note down the file path of the key and make sure the key is not publicly readable (run "$ chmod 400 /path/to/ssh-key-file" to restrict access). If you use cloud-instances, this can be done on the cloud-platform. If you use remote instances, use "$ ssh-keygen -t rsa" and copy the keys to your remote computers with "$ ssh-copy-id -i /the-new-ssh-key-file USER@IP" replacing USER with your name on the instances and IP with the remote machine's IP address (see also [this](https://askubuntu.com/questions/4830/easiest-way-to-copy-ssh-keys-to-another-machine/4833#4833) or [that](https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys--2) page).
+* Generate a new SSH key for your instances. In a terminal, run "$ ssh-keygen -t rsa -f ~/.ssh/[KEY_FILE_NAME] -C [USERNAME]" where KEY_FILE_NAME is the name for your ssh-key-file and USERNAME is the name to use on your instances (most likely your hostname). Make sure the key-file is not publicly readable and run "$ chmod 400 /path/to/[KEY_FILE_NAME]" to restrict access. Note down the file path of the key-file. Now copy the keys to your remote computers with "$ ssh-copy-id -i /the-new-ssh-key-file USERNAME@IP" replacing USERNAME with the name in the ssh-key-file and IP with the remote machine's IP address (see also [this](https://askubuntu.com/questions/4830/easiest-way-to-copy-ssh-keys-to-another-machine/4833#4833) or [that](https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys--2) page).
 * Prepare the project to mine as specified by [hopper](https://github.com/sealuzh/hopper). Put the project and the benchmarks into seperate folders and store them in a directory. Note down the path of this parent-directory. It should match the following structure:
 
 
@@ -36,8 +36,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
         * VersionDistributor: to split by version-ranges
         * RandomVersionDistributor: to assign each instance a selection of random versions.
         * TestDistributor: to split randomly among all available tests (unit or benchmarks)
-        * VersionTestDistributor: to split by version ranges and randomly by tests
-        * RandomDistributor: to split completely randomly: random versions and random tests
+        * RMIT: a complete random split, RMIT stands for Randomized Multiple Interleaved Trials which first generates all possible test-version-combinations and assigns each instance a random selection.
     * ssh-key: the path to the generated SSH-key-file
     * setup: set this to True if an instance is used for the first time and needs configuration.
     * CL-params: a dictionary containing the command line parameters which should be passed to hopper:
@@ -47,7 +46,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
         * -b: the version type to use. Available options: "commits", for git commits, and "versions", for Maven versions.
         * --cloud: a tuple containing the bucket-name and the path to the service-account-credentials file (in any order)
     * optional flags:
-        * --tests: a list of selected tests to mine, for benchmarks of form '.*\\.BenchA$|.*\\.BenchB$|.*\\.BenchC$', unit tests: 'TestA, TestB, TestC')
+        * --tests: a list of selected tests to mine, for benchmarks of form 'BenchA$|BenchB$|BenchC$', unit tests: 'TestA, TestB, TestC')
         * --step: if specified, only executes every nth versions, defaults to 1.
         * --build-type: defines if builds between versions should be clean or incremental. Available options: "clean" and "inc", defaults to "clean".
         * --skip-noncode: if present, skips versions that do not have a code change (e.g. change only in comment).
@@ -79,7 +78,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
     "-o": "/path/to/store/final-output.csv",
     "-t": "benchmark",
     "-b": "commits",
-    "--tests": "'.*\\.BenchA$|.*\\.BenchB$'",
+    "--tests": "'BenchA$|BenchB$'",
     "--cloud": "/path/to/storage-credentials.json bucket-name"
     }
 }
@@ -88,7 +87,10 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
 # Important notes
 * As the IP-addresses of the instances frequently change, consider running "$ ssh-keygen -f ~/.ssh/known_hosts" before each execution.
 * Installation on the instances should take around five minutes. Amongst others, you can monitor its progress in the generated log-file "clopper-log.log". The file will be generated in the /clopper root directory.
-* The results should be continuously written to the cloud-storage bucket "clopper-storage" version by version. Besides the generated log-file, you can monitor the program progress in the [console](https://console.cloud.google.com/storage). 
+* The results should be continuously written to the cloud-storage bucket version by version. Besides the generated log-file, you can monitor the program progress in the [console](https://console.cloud.google.com/storage). 
+* When using large projects, scp-copying can take some while. Monitor its progress in the log-file. 
+* If you plan to run more than one "clopper"-script at once, wait with starting the second one until scp-copying has finished. 
+* In the end, the intermediate results of "hopper" are downloaded from the cloud storage bucket to the local computer. There are available at "/home/USER/output-TIMESTAMP". 
 
 # Troubleshooting
 * Man in the middle attack: The IP-address of the concerned instance has most likely been assigned to another instance before. If this is possible, consider running "$ ssh-keygen -f ~/.ssh/known_hosts".

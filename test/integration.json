@@ -10,11 +10,11 @@
     "-o": "/home/selin/Documents/Uni/Bachelorthesis/clopper/test/integration-output.csv",
     "-t": "benchmark",
     "-b": "commits",
-    "--tests": "'.*\\.runtime_sparse_deserialize_1_int_field$|.*\\.baseline$|.*\\.runtime_serialize_10_int_fields$'",
+    "--tests": "'io.protostuff.benchmarks.RuntimeSchemaBenchmark.baseline|io.protostuff.benchmarks.RuntimeSchemaBenchmark.runtime_sparse_deserialize_10_int_field|io.protostuff.benchmarks.RuntimeSchemaBenchmark.generated_deserialize_1_int_field'",
     "--cloud": "/home/selin/storage-credentials.json clopper-storage"
   },
   "project": "/home/selin/Documents/Uni/Bachelorthesis/project",
   "setup":"False",
-  "distribution": "VersionTestDistributor",
+  "distribution": "VersionDistributor",
   "ssh-key":"/home/selin/.ssh/gce-key"
 }

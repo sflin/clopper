@@ -75,16 +75,15 @@ class Writer(object):
                     else:
                         cl_file.write(p + ' ' + str(params[p]) + ' ')
                 if suite[0]: # if suite has elements, add --tests flag
-                    if params['-t'] == 'benchmark':
-                        tmp= "--tests '.*\."
-                        for i in range(0, len(suite)-1): 
-                            tmp += suite[i] + "$|.*\."
-                        tmp += suite[-1] + "$'"
+                    tmp = "--tests '"
+                    delimiter = "$|" if params['-t'] == 'benchmark' else ","
+                    if self.data['distribution'] == 'RMIT':
+                        tmp += suite[x] + "$'"
                     else:
-                        tmp= "--tests '"
-                        for i in range(0, len(suite)-1): 
-                            tmp += suite[i] + ","
-                        tmp += suite[-1] + "'"
+                        for i in range(0, len(suite)-1):
+                            tmp += suite[i] + delimiter
+                        end = "$'" if params['-t'] == 'benchmark' else "'"
+                        tmp += suite[-1] + end
                     cl_file.write(tmp)
         os.chdir('..')
         params = shutil.make_archive('params', 'gztar', root_dir=expanduser('~/tmp/params'))
@@ -129,8 +128,9 @@ class Writer(object):
         if ('-b','versions') in self.data['CL-params'].viewitems():
             self.get_version_config(suite)
         elif self.eval_input():
+            self.num = 0
             for s in suite:
-                self.num = suite.index(s) + 1
+                self.num += 1
                 self.get_config([s], self.num)
         else:
             self.get_config(suite, 1)

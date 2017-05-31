@@ -19,7 +19,8 @@ class OutputGeneratorTest (unittest.TestCase):
                             "-t": "benchmark",
                             "--cloud": "/home/selin/storage-credentials.json clopper-storage"
                           },
-                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project"
+                          "project": "/home/selin/Documents/Uni/Bachelorthesis/Testing/project",
+                          "distribution":"TestDistributor"
                         }""")
     
     versions = ['8924a5f', 'a16e0bb', '5fa34fc', '01bc2b2']

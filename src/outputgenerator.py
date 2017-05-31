@@ -29,7 +29,8 @@ def get_header(data):
                   'type':data['CL-params']['-t'], 'backend':'commits', 
                   'runner':'mvn', 'start':None, 'to': None, 'step':None, 
                   'invert':False, 'tests':None, 'mode':'commit-mode', 
-                  'codeonly':False, 'build-type':'clean', 'cloud':data['CL-params']['--cloud']}
+                  'codeonly':False, 'build-type':'clean', 'cloud':data['CL-params']['--cloud'],
+                  'distribution-mode':data['distribution']}
     
     mapping = {'backend':'-b', 'runner':'-r', 'start':'--from', 'to':'--to', 
                'step':'--step', 'invert':'-i', 'tests':'--tests', 

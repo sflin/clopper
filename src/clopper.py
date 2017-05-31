@@ -15,6 +15,7 @@ import sys
 import json
 import client
 import os
+import re
 import glob
 from os.path import expanduser
 import shutil
@@ -22,8 +23,7 @@ from Writer import Writer
 import outputgenerator as og
 from google.cloud import storage
 from Distributor import (Distributor, TestDistributor, VersionDistributor, 
-                         VersionTestDistributor, RandomDistributor, 
-                         RandomVersionDistributor)
+                         RandomVersionDistributor, RMIT)
 def parse_json(param):
     """Parse json-config file and check for valid input."""
     
@@ -44,8 +44,7 @@ def parse_json(param):
     if not '--cloud' in data['CL-params']:
         raise ValueError("--cloud flag required in CL-params. ")
     distri_modes = ('Distributor', 'TestDistributor', 'VersionDistributor', 
-                         'VersionTestDistributor', 'RandomDistributor', 
-                         'RandomVersionDistributor')
+                         'RandomVersionDistributor', 'RMIT')
     if data['distribution'] not in distri_modes:
         raise ValueError("Invalid distribution mode.") 
     args = data['CL-params']['--cloud'].split(' ')
@@ -54,6 +53,8 @@ def parse_json(param):
         raise IOError("Credentials file does not exist.")
     if not os.path.exists(data['CL-params']['-f']):
         raise IOError("Config-file does not exist.")
+    if not os.path.exists(re.search('(.*)/.*$', data['CL-params']['-o']).group(1)):
+        raise IOError("Invalid path to output-file.")
     if not os.path.exists(data['project']):
         raise IOError("Project-folder does not exist.")
     if data['CL-params']['-t'] not in ('benchmark', 'unit'):
@@ -64,19 +65,9 @@ def parse_json(param):
     logging.info("Json-file is valid.")
     return data
 
-def clean_up(data):
-    """Clean up local host and bucket storage."""
-    try:
-        shutil.rmtree(expanduser('~/tmp'))
-    except OSError:
-        pass
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(data['bucket-name'])
-    bucket_files = bucket.list_blobs()
-    bucket.delete_blobs(bucket_files)
-
 def get_results(data):
+    """Grab results from bucket storage and merge files into a single output file."""
+    
     t = str(time.time()).replace('.','')
     os.mkdir(expanduser('~/output-' + t))
     os.environ['GOOGLE_APPLICATION_CREDENTIALS']= data['credentials']
@@ -88,7 +79,8 @@ def get_results(data):
         blob.download_to_filename(expanduser('~/output-' + t +'/' + str(blob.name)))
     files = glob.glob(expanduser('~/output-' + t + '/*.csv'))
     og.concat(data, files)
-    shutil.rmtree(expanduser('~/output-' + t))
+    bucket_files = bucket.list_blobs()
+    bucket.delete_blobs(bucket_files)
 
 def start_grpc_server(node_dict, data):
     """Start GRPC-server on cloud instances for communication."""
@@ -103,6 +95,7 @@ def start_grpc_server(node_dict, data):
         subprocess.Popen(cmd, shell=True)
 
 def distribute_test_suite(node_dict, test_suite, data):
+    """SSH into the remote instance and transfer data with SCP."""
     
     # compress project-dir
     project = shutil.make_archive(expanduser('~/tmp/project'),'gztar',root_dir= data['project'])
@@ -117,12 +110,15 @@ def distribute_test_suite(node_dict, test_suite, data):
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(hostname=ip, username=user, key_filename=key_file)
         with SCPClient(client.get_transport()) as scp:
+            #TODO: remove this!
+            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
             scp.put(config, "/home/" + user + "/tmp/config.tar.gz")
             scp.put(cl, "/home/" + user + "/tmp/params.tar.gz")
             scp.put(project, "/home/" + user + "/tmp/project.tar.gz")
         client.close()
             
 def set_up(node, data):
+    """Transfer configuration-script on instances and run it."""
     
     user = data['username']
     ip = node[1]
@@ -132,6 +128,9 @@ def set_up(node, data):
     client.connect(hostname=ip, username=user, key_filename=key_file)
     with SCPClient(client.get_transport()) as scp:
         scp.put('cloud-configuration.sh', "/home/"+ user)
+        scp.put('server.py', "/home/"+ user)
+        scp.put('clopper_pb2.py', "/home/"+ user)
+        scp.put('clopper_pb2_grpc.py', "/home/"+ user)
         scp.put(data['credentials'], "/home/"+ user)
     logging.info("Start installation on " + node[0])
     (stdin, stdout, stderr) = client.exec_command('bash ~/cloud-configuration.sh')
@@ -149,6 +148,8 @@ def set_up(node, data):
     client.close()
 
 def run():
+    """Beginn of main clopper-script."""
+    
     logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
                         datefmt="%Y-%m-%d %H:%M:%S", filemode='w', level=logging.INFO,
                         filename='../clopper-log' + str(time.time()).replace('.','') + '.log')
@@ -159,6 +160,7 @@ def run():
     # configure instances if required
     if 'True' in data['setup']:
         threads = [threading.Thread(target=set_up, args=(node, data,)) for node in node_dict.iteritems()]
+        logging.info("Start setting up hosts.")
         [t.start() for t in threads]
         [thread.join() for thread in threads]
         logging.info("Instances successfully configured.")
@@ -172,7 +174,10 @@ def run():
     # create and distribute test suite
     distributor = Distributor(data, strategy=eval(data['distribution']))
     test_suite = distributor.get_suite()
+    
     logging.info("Test suite generated and splitted.")
+    logging.info(data['distribution'])
+    logging.info(test_suite)
     for x in reversed(range(0, len(test_suite))):
         if test_suite[x] == [[None],[None]]:
             node = node_dict.keys()[x]
@@ -196,8 +201,6 @@ def run():
     # shut down instances
     logging.info("Grabbing results...")
     get_results(data)
-    logging.info("Shutting down instances and clean up local host...")
-    clean_up(data)
     logging.info("Execution finished.")
     
 if __name__ == '__main__':
