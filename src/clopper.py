@@ -110,8 +110,6 @@ def distribute_test_suite(node_dict, test_suite, data):
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(hostname=ip, username=user, key_filename=key_file)
         with SCPClient(client.get_transport()) as scp:
-            #TODO: remove this!
-            scp.put('/home/selin/Documents/Uni/Bachelorthesis/hopper/impl/FileDumper.py', "/home/" + user + "/hopper/impl/FileDumper.py")
             scp.put(config, "/home/" + user + "/tmp/config.tar.gz")
             scp.put(cl, "/home/" + user + "/tmp/params.tar.gz")
             scp.put(project, "/home/" + user + "/tmp/project.tar.gz")
