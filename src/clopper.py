@@ -90,7 +90,7 @@ def start_grpc_server(node_dict, data):
         ip = node[1]
         user = data['username']
         key_file= data['ssh-key']
-        cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L 222" + port 
+        cmd = "ssh -i " + key_file + " -o StrictHostKeyChecking=no -L " + port 
         cmd+= ":localhost:8080 " + user + "@" + ip + " python /home/" + user + "/server.py"
         subprocess.Popen(cmd, shell=True)
 
@@ -193,7 +193,7 @@ def run():
     time.sleep(5)
     
     # start gRPC-client on local host
-    logging.info("Starting grpc client...")
+    logging.info("Starting cloud-manager-client...")
     client.run(node_dict)
     
     # shut down instances

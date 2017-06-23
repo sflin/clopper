@@ -35,7 +35,7 @@ def initial_greeting(stubs):
                  " Please check connection.")
 
 def create_stubs(ports):
-    channels = [grpc.insecure_channel('localhost:222'+ pn) for pn in ports]
+    channels = [grpc.insecure_channel('localhost:'+ pn) for pn in ports]
     stubs = [clopper_pb2_grpc.ClopperStub(c) for c in channels]
     logging.info("Channel created.")
     return stubs
