@@ -29,7 +29,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
 * Prepare an xml-config file, as specified by [hopper](https://github.com/sealuzh/hopper). Note down the file path.
 * Prepare a json-config file including the fields:
     * total: the total number of remote instances.
-    * ip-list: a dictionary of the form {instance-name : ip} of the remote instances. Instance-name must end with a hyphen and a unique number of max. 2 digits length (e.g. instance-01, instance-02, instance-03).
+    * ip-list: a dictionary of the form {instance-name : ip} of the remote instances. Instance-name must end with a hyphen and a unique number of max. 5 digits length (e.g. instance-2201, instance-2202, instance-2203). Make sure to avoid the system-port numbers in the range 0 to 1023. 
     * project: the path of the project-directory containing the jmh-root dir and the git-project (see structure above).
     * username: Add, if your username is different than the name used on the system, defaults to $USER. The username must match with the one of the SSH-key.
     * distribution: the splitting method which is used to distribute the versions and tests. Choose one of the following:
@@ -85,6 +85,7 @@ Clopper is an extension of [hopper](https://github.com/sealuzh/hopper) a tool to
 ```
 
 # Important notes
+* Be careful to name your instances NOT after the system-ports 0 to 1023 since these require super-user privileges for access.
 * As the IP-addresses of the instances frequently change, consider running "$ ssh-keygen -f ~/.ssh/known_hosts" before each execution.
 * Installation on the instances should take around five minutes. Amongst others, you can monitor its progress in the generated log-file "clopper-log.log". The file will be generated in the /clopper root directory.
 * The results should be continuously written to the cloud-storage bucket version by version. Besides the generated log-file, you can monitor the program progress in the [console](https://console.cloud.google.com/storage). 
